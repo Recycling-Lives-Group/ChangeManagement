@@ -11,6 +11,7 @@ export default function Register() {
     name: '',
     department: '',
     phone: '',
+    role: 'Requester',
   });
 
   const { register, isLoading } = useAuthStore();
@@ -27,8 +28,19 @@ export default function Register() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const fillAdminData = () => {
+    setFormData({
+      email: 'admin@recyclinglives.com',
+      password: 'admin123',
+      name: 'Admin User',
+      department: 'IT',
+      phone: '+44 1234 567890',
+      role: 'Admin',
+    });
   };
 
   return (
@@ -122,6 +134,38 @@ export default function Register() {
                 className="input-field"
                 placeholder="••••••••"
               />
+            </div>
+
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium mb-2">
+                Role
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                className="input-field"
+              >
+                <option value="Requester">Requester</option>
+                <option value="Approver">Approver</option>
+                <option value="Implementer">Implementer</option>
+                <option value="Admin">Admin</option>
+              </select>
+            </div>
+
+            {/* Development: Quick Admin Setup */}
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+              <p className="text-xs text-purple-800 dark:text-purple-300 mb-2 font-medium">
+                🚀 Development Mode
+              </p>
+              <button
+                type="button"
+                onClick={fillAdminData}
+                className="text-xs px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+              >
+                Fill Admin Details
+              </button>
             </div>
 
             <button

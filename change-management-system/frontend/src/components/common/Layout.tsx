@@ -8,7 +8,8 @@ import {
   User,
   Bell,
   Menu,
-  X
+  X,
+  Eye
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
@@ -45,7 +46,7 @@ export default function Layout({ children }: LayoutProps) {
               <Link to="/" className="flex ml-2 md:mr-24">
                 <FileText className="h-8 w-8 text-primary-600" />
                 <span className="self-center text-xl font-semibold sm:text-2xl whitespace-nowrap ml-2">
-                  Change Management
+                  RLS Change Management App
                 </span>
               </Link>
             </div>
@@ -69,7 +70,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform ${
+        className={`fixed top-0 left-0 z-20 w-64 h-screen pt-20 transition-transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } bg-white border-r border-gray-200 lg:translate-x-0 dark:bg-gray-800 dark:border-gray-700`}
       >
@@ -81,9 +82,31 @@ export default function Layout({ children }: LayoutProps) {
                 className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 <LayoutDashboard size={20} />
-                <span className="ml-3">Dashboard</span>
+                <span className="ml-3">User Dashboard</span>
               </Link>
             </li>
+{isAdmin && (
+              <>
+                <li>
+                  <Link
+                    to="/admin"
+                    className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <Settings size={20} />
+                    <span className="ml-3">CAB Dashboard</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/cab-review"
+                    className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <Eye size={20} />
+                    <span className="ml-3">CAB Review</span>
+                  </Link>
+                </li>
+              </>
+            )}
             <li>
               <Link
                 to="/changes/new"
@@ -93,17 +116,6 @@ export default function Layout({ children }: LayoutProps) {
                 <span className="ml-3">New Change Request</span>
               </Link>
             </li>
-            {isAdmin && (
-              <li>
-                <Link
-                  to="/admin"
-                  className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <Settings size={20} />
-                  <span className="ml-3">Admin Dashboard</span>
-                </Link>
-              </li>
-            )}
             <li>
               <button
                 onClick={handleLogout}
@@ -118,8 +130,8 @@ export default function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <div className="p-4 lg:ml-64 mt-14">
-        <div className="p-4">{children}</div>
+      <div className="lg:ml-64 mt-14">
+        {children}
       </div>
     </div>
   );

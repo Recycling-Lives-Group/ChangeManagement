@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import ChangeForm from './pages/ChangeForm';
 import ChangeDetail from './pages/ChangeDetail';
 import AdminDashboard from './pages/AdminDashboard';
+import CABReview from './pages/CABReview';
 import Layout from './components/common/Layout';
 
 function App() {
@@ -80,6 +81,19 @@ function App() {
               isAuthenticated ? (
                 <Layout>
                   <AdminDashboard />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/cab-review"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <CABReview />
                 </Layout>
               ) : (
                 <Navigate to="/login" />

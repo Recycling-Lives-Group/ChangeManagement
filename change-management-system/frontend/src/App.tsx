@@ -11,6 +11,21 @@ import AdminDashboard from './pages/AdminDashboard';
 import CABReview from './pages/CABReview';
 import Layout from './components/common/Layout';
 
+// Phase 2 Features
+import MetricsDashboard from './pages/MetricsDashboard';
+import ChangeCalendar from './pages/ChangeCalendar';
+import RiskCalculator from './pages/RiskCalculator';
+import CABMeetings from './pages/CABMeetings';
+import VotingSystem from './pages/VotingSystem';
+import PrioritizationEngine from './pages/PrioritizationEngine';
+import DependencyVisualization from './pages/DependencyVisualization';
+
+// Phase 3 Features
+import AdvancedAnalytics from './pages/AdvancedAnalytics';
+import ProcessAutomation from './pages/ProcessAutomation';
+import AIInsights from './pages/AIInsights';
+import KnowledgeBase from './pages/KnowledgeBase';
+
 function App() {
   const { loadUser, isAuthenticated, isLoading } = useAuthStore();
 
@@ -94,6 +109,151 @@ function App() {
               isAuthenticated ? (
                 <Layout>
                   <CABReview />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          {/* Phase 2 Feature Routes */}
+          <Route
+            path="/metrics"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <MetricsDashboard />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/calendar"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <ChangeCalendar />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/risk-calculator"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <RiskCalculator />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/cab-meetings"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <CABMeetings />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/voting"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <VotingSystem />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/prioritization"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <PrioritizationEngine />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/dependencies"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <DependencyVisualization />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          {/* Phase 3 Feature Routes */}
+          <Route
+            path="/advanced-analytics"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <AdvancedAnalytics />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/process-automation"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <ProcessAutomation />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/ai-insights"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <AIInsights />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/knowledge-base"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <KnowledgeBase />
                 </Layout>
               ) : (
                 <Navigate to="/login" />

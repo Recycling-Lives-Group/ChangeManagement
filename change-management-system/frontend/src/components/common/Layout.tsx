@@ -9,7 +9,17 @@ import {
   Bell,
   Menu,
   X,
-  Eye
+  Eye,
+  BarChart3,
+  Calendar,
+  Calculator,
+  Users,
+  ThumbsUp,
+  Zap,
+  GitBranch,
+  TrendingUp,
+  Brain,
+  BookOpen
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
@@ -116,7 +126,121 @@ export default function Layout({ children }: LayoutProps) {
                 <span className="ml-3">New Change Request</span>
               </Link>
             </li>
+
+            {/* Phase 2 Features */}
+            <li className="pt-4 mt-4 space-y-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Phase 2 Features
+              </div>
+            </li>
             <li>
+              <Link
+                to="/metrics"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <BarChart3 size={20} />
+                <span className="ml-3">Metrics Dashboard</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/calendar"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Calendar size={20} />
+                <span className="ml-3">Change Calendar</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/risk-calculator"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Calculator size={20} />
+                <span className="ml-3">Risk Calculator</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/cab-meetings"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Users size={20} />
+                <span className="ml-3">CAB Meetings</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/voting"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <ThumbsUp size={20} />
+                <span className="ml-3">Voting System</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/prioritization"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Zap size={20} />
+                <span className="ml-3">Prioritization Engine</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/dependencies"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <GitBranch size={20} />
+                <span className="ml-3">Dependency Graph</span>
+              </Link>
+            </li>
+
+            {/* Phase 3 Features */}
+            <li className="pt-4 mt-4 space-y-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Phase 3 Features
+              </div>
+            </li>
+            <li>
+              <Link
+                to="/advanced-analytics"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <TrendingUp size={20} />
+                <span className="ml-3">Advanced Analytics</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/process-automation"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Zap size={20} />
+                <span className="ml-3">Process Automation</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/ai-insights"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Brain size={20} />
+                <span className="ml-3">AI Insights</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/knowledge-base"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <BookOpen size={20} />
+                <span className="ml-3">Knowledge Base</span>
+              </Link>
+            </li>
+
+            <li className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={handleLogout}
                 className="flex items-center p-2 w-full text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"

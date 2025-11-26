@@ -38,7 +38,7 @@ export default function Layout({ children }: LayoutProps) {
     navigate('/login');
   };
 
-  const isAdmin = user?.role === 'Admin' || user?.role === 'CAB_Member' || user?.role === 'Coordinator';
+  const isAdmin = user?.role === 'admin' || user?.role === 'Admin' || user?.role === 'CAB_Member' || user?.role === 'Coordinator' || user?.role === 'cab_member' || user?.role === 'manager';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -126,6 +126,15 @@ export default function Layout({ children }: LayoutProps) {
                 <span className="ml-3">New Change Request</span>
               </Link>
             </li>
+            <li>
+              <Link
+                to="/calendar"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Calendar size={20} />
+                <span className="ml-3">Change Calendar</span>
+              </Link>
+            </li>
 
             {/* Phase 2 Features */}
             <li className="pt-4 mt-4 space-y-2 border-t border-gray-200 dark:border-gray-700">
@@ -144,20 +153,20 @@ export default function Layout({ children }: LayoutProps) {
             </li>
             <li>
               <Link
-                to="/calendar"
+                to="/effort-assessment"
                 className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <Calendar size={20} />
-                <span className="ml-3">Change Calendar</span>
+                <Calculator size={20} />
+                <span className="ml-3">Effort Assessment</span>
               </Link>
             </li>
             <li>
               <Link
-                to="/risk-calculator"
+                to="/benefit-assessment"
                 className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <Calculator size={20} />
-                <span className="ml-3">Risk Calculator</span>
+                <Zap size={20} />
+                <span className="ml-3">Benefit Assessment</span>
               </Link>
             </li>
             <li>
@@ -176,15 +185,6 @@ export default function Layout({ children }: LayoutProps) {
               >
                 <ThumbsUp size={20} />
                 <span className="ml-3">Voting System</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/prioritization"
-                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <Zap size={20} />
-                <span className="ml-3">Prioritization Engine</span>
               </Link>
             </li>
             <li>

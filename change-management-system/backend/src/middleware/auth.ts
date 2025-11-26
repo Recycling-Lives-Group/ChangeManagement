@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { User, UserDocument } from '../models/User.js';
+import { UserSQL, UserData } from '../models/UserSQL.js';
 import { config } from '../config/index.js';
 
 export interface AuthRequest extends Request {
-  user?: UserDocument;
+  user?: { id: string };
 }
 
 export const protect = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -26,9 +26,9 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
 
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as { id: string };
-    req.user = (await User.findById(decoded.id).select('+password')) as UserDocument;
+    const user = await UserSQL.findById(parseInt(decoded.id));
 
-    if (!req.user) {
+    if (!user) {
       return res.status(401).json({
         success: false,
         error: {
@@ -38,6 +38,7 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
       });
     }
 
+    req.user = { id: decoded.id };
     next();
   } catch (error) {
     return res.status(401).json({
@@ -51,13 +52,24 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
 };
 
 export const authorize = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
       return res.status(403).json({
         success: false,
         error: {
           code: 'FORBIDDEN',
-          message: `User role ${req.user?.role} is not authorized to access this route`,
+          message: 'Not authorized',
+        },
+      });
+    }
+
+    const user = await UserSQL.findById(parseInt(req.user.id));
+    if (!user || !roles.includes(user.role)) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: `User role ${user?.role} is not authorized to access this route`,
         },
       });
     }

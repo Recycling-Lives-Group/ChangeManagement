@@ -7,7 +7,19 @@
       "Bash(npm run dev:*)",
       "Bash(gh auth:*)",
       "Bash(gh repo create:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm install:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(timeout:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(del test-db.js)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

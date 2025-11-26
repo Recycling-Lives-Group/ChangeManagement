@@ -6,7 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import ChangeForm from './pages/ChangeForm';
-import ChangeDetail from './pages/ChangeDetail';
+import ChangeDetail from './pages/ChangeDetailFull';
 import AdminDashboard from './pages/AdminDashboard';
 import CABReview from './pages/CABReview';
 import Layout from './components/common/Layout';
@@ -14,10 +14,10 @@ import Layout from './components/common/Layout';
 // Phase 2 Features
 import MetricsDashboard from './pages/MetricsDashboard';
 import ChangeCalendar from './pages/ChangeCalendar';
-import RiskCalculator from './pages/RiskCalculator';
+import EffortAssessment from './pages/EffortAssessment';
 import CABMeetings from './pages/CABMeetings';
 import VotingSystem from './pages/VotingSystem';
-import PrioritizationEngine from './pages/PrioritizationEngine';
+import BenefitAssessment from './pages/BenefitAssessment';
 import DependencyVisualization from './pages/DependencyVisualization';
 
 // Phase 3 Features
@@ -66,6 +66,19 @@ function App() {
 
           <Route
             path="/changes/new"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <ChangeForm />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/changes/edit/:id"
             element={
               isAuthenticated ? (
                 <Layout>
@@ -144,11 +157,11 @@ function App() {
           />
 
           <Route
-            path="/risk-calculator"
+            path="/effort-assessment"
             element={
               isAuthenticated ? (
                 <Layout>
-                  <RiskCalculator />
+                  <EffortAssessment />
                 </Layout>
               ) : (
                 <Navigate to="/login" />
@@ -183,11 +196,11 @@ function App() {
           />
 
           <Route
-            path="/prioritization"
+            path="/benefit-assessment"
             element={
               isAuthenticated ? (
                 <Layout>
-                  <PrioritizationEngine />
+                  <BenefitAssessment />
                 </Layout>
               ) : (
                 <Navigate to="/login" />

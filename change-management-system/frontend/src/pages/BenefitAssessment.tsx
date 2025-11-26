@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Zap,
   TrendingUp,
-  DollarSign,
+  PoundSterling,
   Clock,
   Users,
   AlertTriangle,
@@ -12,6 +12,7 @@ import {
   ArrowUp,
   ArrowDown,
 } from 'lucide-react';
+import { useChangesStore } from '../store/changesStore';
 
 interface ChangeRequest {
   id: string;
@@ -27,146 +28,95 @@ interface ChangeRequest {
 }
 
 interface PriorityFactors {
-  businessValue: number; // 1-10
+  revenueImprovement: number; // 1-10
+  costSavings: number; // 1-10
+  customerImpact: number; // 1-10
+  processImprovement: number; // 1-10
+  internalQoL: number; // 1-10
   urgency: number; // 1-10
   impactScope: number; // 1-10
   riskLevel: number; // 1-10
   resourceRequirement: number; // 1-10 (inverse - lower is better)
-  dependency: number; // 1-10 (number of dependencies)
   strategicAlignment: number; // 1-10
-  customerImpact: number; // 1-10
 }
 
 interface PriorityWeights {
-  businessValue: number;
+  revenueImprovement: number;
+  costSavings: number;
+  customerImpact: number;
+  processImprovement: number;
+  internalQoL: number;
   urgency: number;
   impactScope: number;
   riskLevel: number;
   resourceRequirement: number;
-  dependency: number;
   strategicAlignment: number;
-  customerImpact: number;
 }
 
-// Sample data
-const sampleChanges: ChangeRequest[] = [
-  {
-    id: 'CR-2025-001',
-    title: 'Database Migration - PostgreSQL 16',
-    type: 'major',
-    riskLevel: 'high',
-    requester: 'John Doe',
-    submittedDate: new Date(2025, 10, 20),
-    targetDate: new Date(2025, 11, 15),
-    factors: {
-      businessValue: 8,
-      urgency: 6,
-      impactScope: 9,
-      riskLevel: 7,
-      resourceRequirement: 8,
-      dependency: 5,
-      strategicAlignment: 9,
-      customerImpact: 7,
-    },
-  },
-  {
-    id: 'CR-2025-002',
-    title: 'Emergency Security Patch',
-    type: 'emergency',
-    riskLevel: 'critical',
-    requester: 'Alice Williams',
-    submittedDate: new Date(2025, 10, 24),
-    targetDate: new Date(2025, 10, 26),
-    factors: {
-      businessValue: 10,
-      urgency: 10,
-      impactScope: 10,
-      riskLevel: 10,
-      resourceRequirement: 3,
-      dependency: 2,
-      strategicAlignment: 10,
-      customerImpact: 10,
-    },
-  },
-  {
-    id: 'CR-2025-003',
-    title: 'API Rate Limiting Update',
-    type: 'minor',
-    riskLevel: 'low',
-    requester: 'Sarah Davis',
-    submittedDate: new Date(2025, 10, 18),
-    targetDate: new Date(2025, 10, 30),
-    factors: {
-      businessValue: 6,
-      urgency: 5,
-      impactScope: 5,
-      riskLevel: 3,
-      resourceRequirement: 2,
-      dependency: 1,
-      strategicAlignment: 5,
-      customerImpact: 6,
-    },
-  },
-  {
-    id: 'CR-2025-004',
-    title: 'New Payment Gateway Integration',
-    type: 'major',
-    riskLevel: 'medium',
-    requester: 'Bob Johnson',
-    submittedDate: new Date(2025, 10, 22),
-    targetDate: new Date(2025, 11, 20),
-    factors: {
-      businessValue: 9,
-      urgency: 7,
-      impactScope: 8,
-      riskLevel: 6,
-      resourceRequirement: 9,
-      dependency: 7,
-      strategicAlignment: 10,
-      customerImpact: 9,
-    },
-  },
-  {
-    id: 'CR-2025-005',
-    title: 'UI Theme Customization',
-    type: 'minor',
-    riskLevel: 'low',
-    requester: 'Mike Brown',
-    submittedDate: new Date(2025, 10, 19),
-    targetDate: new Date(2025, 11, 5),
-    factors: {
-      businessValue: 4,
-      urgency: 3,
-      impactScope: 6,
-      riskLevel: 2,
-      resourceRequirement: 4,
-      dependency: 1,
-      strategicAlignment: 3,
-      customerImpact: 5,
-    },
-  },
-];
-
-export const PrioritizationEngine: React.FC = () => {
-  const [changes, setChanges] = useState<ChangeRequest[]>(sampleChanges);
+export const BenefitAssessment: React.FC = () => {
+  const { changes: storeChanges, fetchChanges } = useChangesStore();
+  const [changes, setChanges] = useState<ChangeRequest[]>([]);
   const [weights, setWeights] = useState<PriorityWeights>({
-    businessValue: 2.0,
-    urgency: 1.8,
-    impactScope: 1.5,
-    riskLevel: 1.3,
-    resourceRequirement: 1.0,
-    dependency: 1.2,
-    strategicAlignment: 1.7,
-    customerImpact: 1.6,
+    revenueImprovement: 2.5,    // Highest - Revenue generation
+    costSavings: 2.3,           // Very High - Cost reduction
+    customerImpact: 2.2,        // Very High - Customer satisfaction
+    processImprovement: 1.9,    // High - Operational efficiency
+    internalQoL: 1.6,           // Medium-High - Employee satisfaction
+    strategicAlignment: 2.0,    // High - Long-term goals
+    urgency: 1.8,               // High - Time sensitivity
+    impactScope: 1.5,           // Medium - Scale of change
+    riskLevel: 1.4,             // Medium - Risk consideration
+    resourceRequirement: 1.0,   // Low - Resources needed (inverse)
   });
   const [showWeightConfig, setShowWeightConfig] = useState(false);
   const [sortedChanges, setSortedChanges] = useState<ChangeRequest[]>([]);
 
+  // Fetch changes on mount
   useEffect(() => {
-    calculatePriorities();
-  }, [changes, weights]);
+    fetchChanges();
+  }, [fetchChanges]);
+
+  // Convert store changes to prioritization format
+  useEffect(() => {
+    const convertedChanges: ChangeRequest[] = storeChanges
+      .filter(change => change.status !== 'rejected' && change.status !== 'cancelled' && change.status !== 'completed')
+      .map(change => {
+        const wizardData = change.wizardData || {};
+
+        // Extract factor values from wizard data
+        const factors: PriorityFactors = {
+          revenueImprovement: wizardData.changeReasons?.revenueImprovement ? 8 : 3,
+          costSavings: wizardData.changeReasons?.costReduction ? 8 : 3,
+          customerImpact: wizardData.changeReasons?.customerImpact ? 8 : 3,
+          processImprovement: wizardData.changeReasons?.processImprovement ? 7 : 3,
+          internalQoL: wizardData.changeReasons?.internalQoL ? 7 : 3,
+          urgency: wizardData.urgencyLevel === 'high' ? 9 : wizardData.urgencyLevel === 'medium' ? 6 : 3,
+          impactScope: Math.min(10, Math.ceil((Number(wizardData.impactedUsers) || 0) / 100)),
+          riskLevel: change.riskScore ? Math.ceil(change.riskScore / 10) : 5,
+          resourceRequirement: Math.min(10, Math.ceil((Number(wizardData.estimatedEffortHours) || 0) / 40)),
+          strategicAlignment: wizardData.changeReasons?.revenueImprovement || wizardData.changeReasons?.costReduction ? 8 : 5,
+        };
+
+        return {
+          id: change.requestNumber || change.id,
+          title: change.title,
+          type: change.priority === 'critical' ? 'emergency' : change.priority === 'high' ? 'major' : change.priority === 'medium' ? 'standard' : 'minor',
+          riskLevel: (change.riskLevel?.toLowerCase() as 'critical' | 'high' | 'medium' | 'low') || 'medium',
+          requester: change.requester?.name || 'Unknown',
+          submittedDate: change.submittedAt ? new Date(change.submittedAt) : new Date(),
+          targetDate: wizardData.proposedDate ? new Date(wizardData.proposedDate) : new Date(),
+          factors,
+        };
+      });
+
+    setChanges(convertedChanges);
+  }, [storeChanges]);
 
   const calculatePriorities = () => {
+    if (changes.length === 0) {
+      setSortedChanges([]);
+      return;
+    }
     const changesWithScores = changes.map((change) => {
       let totalScore = 0;
       let totalWeight = 0;
@@ -205,20 +155,26 @@ export const PrioritizationEngine: React.FC = () => {
     setSortedChanges(ranked);
   };
 
+  useEffect(() => {
+    calculatePriorities();
+  }, [changes, weights]);
+
   const handleWeightChange = (weight: keyof PriorityWeights, value: number) => {
     setWeights((prev) => ({ ...prev, [weight]: value }));
   };
 
   const resetWeights = () => {
     setWeights({
-      businessValue: 2.0,
-      urgency: 1.8,
-      impactScope: 1.5,
-      riskLevel: 1.3,
-      resourceRequirement: 1.0,
-      dependency: 1.2,
-      strategicAlignment: 1.7,
-      customerImpact: 1.6,
+      revenueImprovement: 2.5,    // Highest - Revenue generation
+      costSavings: 2.3,           // Very High - Cost reduction
+      customerImpact: 2.2,        // Very High - Customer satisfaction
+      processImprovement: 1.9,    // High - Operational efficiency
+      internalQoL: 1.6,           // Medium-High - Employee satisfaction
+      strategicAlignment: 2.0,    // High - Long-term goals
+      urgency: 1.8,               // High - Time sensitivity
+      impactScope: 1.5,           // Medium - Scale of change
+      riskLevel: 1.4,             // Medium - Risk consideration
+      resourceRequirement: 1.0,   // Low - Resources needed (inverse)
     });
   };
 
@@ -255,15 +211,40 @@ export const PrioritizationEngine: React.FC = () => {
     keyof PriorityFactors,
     { label: string; icon: any; help: string }
   > = {
-    businessValue: {
-      label: 'Business Value',
-      icon: DollarSign,
-      help: 'Expected business value and ROI',
+    revenueImprovement: {
+      label: 'Revenue Improvement',
+      icon: PoundSterling,
+      help: 'Expected revenue generation and growth',
+    },
+    costSavings: {
+      label: 'Cost Savings',
+      icon: TrendingUp,
+      help: 'Expected cost reduction and savings',
+    },
+    customerImpact: {
+      label: 'Customer Impact',
+      icon: Users,
+      help: 'Impact on customer satisfaction and retention',
+    },
+    processImprovement: {
+      label: 'Process Improvement',
+      icon: BarChart3,
+      help: 'Operational efficiency and process optimization',
+    },
+    internalQoL: {
+      label: 'Internal Quality of Life',
+      icon: Users,
+      help: 'Employee satisfaction and work experience',
+    },
+    strategicAlignment: {
+      label: 'Strategic Alignment',
+      icon: Zap,
+      help: 'Alignment with long-term business goals',
     },
     urgency: {
       label: 'Urgency',
       icon: Clock,
-      help: 'Time sensitivity of the change',
+      help: 'Time sensitivity and deadline pressure',
     },
     impactScope: {
       label: 'Impact Scope',
@@ -280,21 +261,6 @@ export const PrioritizationEngine: React.FC = () => {
       icon: Users,
       help: 'Resources needed (lower is better)',
     },
-    dependency: {
-      label: 'Dependencies',
-      icon: TrendingUp,
-      help: 'Number of dependent changes',
-    },
-    strategicAlignment: {
-      label: 'Strategic Alignment',
-      icon: Zap,
-      help: 'Alignment with strategic goals',
-    },
-    customerImpact: {
-      label: 'Customer Impact',
-      icon: Users,
-      help: 'Direct impact on customers',
-    },
   };
 
   return (
@@ -303,10 +269,10 @@ export const PrioritizationEngine: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Change Prioritization Engine
+            Benefit Assessment
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Intelligent prioritization based on configurable weighted factors
+            Calculate business benefit scores based on configurable weighted factors
           </p>
         </div>
         <div className="flex gap-2">
@@ -555,4 +521,4 @@ export const PrioritizationEngine: React.FC = () => {
   );
 };
 
-export default PrioritizationEngine;
+export default BenefitAssessment;

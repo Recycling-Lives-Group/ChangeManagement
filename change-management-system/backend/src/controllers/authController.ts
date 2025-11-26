@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/User.js';
+import { UserSQL } from '../models/UserSQL.js';
 import { config } from '../config/index.js';
 import type { AuthRequest } from '../middleware/auth.js';
 
 // Generate JWT Token
-const generateToken = (id: string): string => {
-  return jwt.sign({ id }, config.jwtSecret, {
+const generateToken = (id: number): string => {
+  return jwt.sign({ id: id.toString() }, config.jwtSecret, {
     expiresIn: config.jwtExpire,
   });
 };
@@ -16,10 +16,10 @@ const generateToken = (id: string): string => {
 // @access  Public
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password, name, department, phone, role } = req.body;
+    const { email, password, username, first_name, last_name, department, role } = req.body;
 
     // Check if user exists
-    const userExists = await User.findOne({ email });
+    const userExists = await UserSQL.findByEmail(email);
     if (userExists) {
       return res.status(400).json({
         success: false,
@@ -31,31 +31,24 @@ export const register = async (req: Request, res: Response) => {
     }
 
     // Create user
-    const user = await User.create({
+    const user = await UserSQL.create({
       email,
+      username: username || email.split('@')[0],
       password,
-      name,
+      first_name,
+      last_name,
       department,
-      phone,
-      role: role || 'Requester',
+      role: role || 'user',
     });
 
     // Generate token
-    const token = generateToken(user._id.toString());
+    const token = generateToken(user.id);
 
     res.status(201).json({
       success: true,
       data: {
         token,
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-          department: user.department,
-          phone: user.phone,
-          role: user.role,
-          permissions: user.getPermissions(),
-        },
+        user: UserSQL.formatUser(user),
       },
     });
   } catch (error) {
@@ -87,9 +80,9 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Check for user
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
+    // Check for user (need password hash)
+    const user = await UserSQL.findByEmail(email);
+    if (!user || !user.password_hash) {
       return res.status(401).json({
         success: false,
         error: {
@@ -100,7 +93,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Check if password matches
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await UserSQL.comparePassword(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -112,21 +105,13 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Generate token
-    const token = generateToken(user._id.toString());
+    const token = generateToken(user.id);
 
     res.status(200).json({
       success: true,
       data: {
         token,
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-          department: user.department,
-          phone: user.phone,
-          role: user.role,
-          permissions: user.getPermissions(),
-        },
+        user: UserSQL.formatUser(user),
       },
     });
   } catch (error) {
@@ -155,17 +140,20 @@ export const getMe = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const user = await UserSQL.findById(parseInt(req.user.id));
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: 'User not found',
+        },
+      });
+    }
+
     res.status(200).json({
       success: true,
-      data: {
-        id: req.user._id,
-        email: req.user.email,
-        name: req.user.name,
-        department: req.user.department,
-        phone: req.user.phone,
-        role: req.user.role,
-        permissions: req.user.getPermissions(),
-      },
+      data: UserSQL.formatUser(user),
     });
   } catch (error) {
     res.status(500).json({

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -70,19 +70,52 @@ const steps = [
 
 export default function ChangeForm() {
   const navigate = useNavigate();
-  const { createChange, isLoading } = useChangesStore();
+  const { id } = useParams<{ id: string }>();
+  const { createChange, updateChange, fetchChange, currentChange, isLoading } = useChangesStore();
   const [currentStep, setCurrentStep] = useState(1);
+  const isEditMode = !!id;
 
   const {
     register,
     handleSubmit,
     watch,
     trigger,
+    reset,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(changeRequestSchema),
     mode: 'onChange',
   });
+
+  // Load existing change request if editing
+  useEffect(() => {
+    if (isEditMode && id) {
+      fetchChange(id);
+    }
+  }, [isEditMode, id, fetchChange]);
+
+  // Populate form with existing data
+  useEffect(() => {
+    if (isEditMode && currentChange && currentChange.wizardData) {
+      const wizardData = currentChange.wizardData;
+
+      // Convert arrays back to comma-separated strings
+      const formData = {
+        ...wizardData,
+        systemsAffected: Array.isArray(wizardData.systemsAffected)
+          ? wizardData.systemsAffected.join(', ')
+          : wizardData.systemsAffected || '',
+        departments: Array.isArray(wizardData.departments)
+          ? wizardData.departments.join(', ')
+          : wizardData.departments || '',
+        proposedDate: wizardData.proposedDate
+          ? new Date(wizardData.proposedDate).toISOString().split('T')[0]
+          : '',
+      };
+
+      reset(formData);
+    }
+  }, [isEditMode, currentChange, reset]);
 
   const formData = watch();
 
@@ -97,11 +130,17 @@ export default function ChangeForm() {
         relatedChanges: [],
       };
 
-      await createChange(formattedData);
-      toast.success('Change request created successfully!');
-      navigate('/');
+      if (isEditMode && id) {
+        await updateChange(id, formattedData);
+        toast.success('Change request updated successfully!');
+        navigate(`/changes/${id}`);
+      } else {
+        await createChange(formattedData);
+        toast.success('Change request created successfully!');
+        navigate('/');
+      }
     } catch (error) {
-      toast.error('Failed to create change request');
+      toast.error(isEditMode ? 'Failed to update change request' : 'Failed to create change request');
     }
   };
 

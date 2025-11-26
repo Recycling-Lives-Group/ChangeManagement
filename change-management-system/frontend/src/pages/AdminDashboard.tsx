@@ -51,28 +51,136 @@ export default function AdminDashboard() {
   };
 
   const stats = {
-    newRequests: changes.filter((c) => c.status === 'New').length,
-    inReview: changes.filter((c) => c.status === 'In Review').length,
-    approved: changes.filter((c) => c.status === 'Approved').length,
-    rejected: changes.filter((c) => c.status === 'Cancelled').length,
+    newRequests: changes.filter((c) => c.status === 'submitted').length,
+    inReview: changes.filter((c) => c.status === 'under_review').length,
+    approved: changes.filter((c) => c.status === 'approved').length,
+    rejected: changes.filter((c) => c.status === 'rejected').length,
   };
 
-  // Filter changes by selected categories
+  // Filter changes by selected categories and exclude rejected/completed
+  const activeChanges = changes.filter(change =>
+    change.status !== 'rejected' &&
+    change.status !== 'completed' &&
+    change.status !== 'cancelled' &&
+    change.status !== 'implemented'
+  );
+
   const filteredChanges = selectedCategories.includes('All')
-    ? changes
-    : changes.filter(change => {
-        // Mock logic - will check actual category field when added
-        // For now, randomly assign categories for demonstration
-        const mockCategory = change.financialImpact > 10000 ? 'Revenue Impact' : 'Cost Reduction';
-        return selectedCategories.includes(mockCategory as ProjectCategory);
+    ? activeChanges
+    : activeChanges.filter(change => {
+        const wizardData = change.wizardData || {};
+        const reasons = wizardData.changeReasons || {};
+
+        // Map reasons to categories
+        if (selectedCategories.includes('Revenue Impact') && reasons.revenueImprovement) return true;
+        if (selectedCategories.includes('Cost Reduction') && reasons.costReduction) return true;
+        if (selectedCategories.includes('Customer Impact') && reasons.customerImpact) return true;
+        if (selectedCategories.includes('Internal QoL') && reasons.internalQoL) return true;
+
+        return false;
       });
+
+  // Calculate benefit score using prioritization factors
+  const calculateBenefitScore = (change: any) => {
+    const wizardData = change.wizardData || {};
+
+    const factors = {
+      revenueImprovement: wizardData.changeReasons?.revenueImprovement ? 8 : 3,
+      costSavings: wizardData.changeReasons?.costReduction ? 8 : 3,
+      customerImpact: wizardData.changeReasons?.customerImpact ? 8 : 3,
+      processImprovement: wizardData.changeReasons?.processImprovement ? 7 : 3,
+      internalQoL: wizardData.changeReasons?.internalQoL ? 7 : 3,
+      urgency: wizardData.urgencyLevel === 'high' ? 9 : wizardData.urgencyLevel === 'medium' ? 6 : 3,
+      impactScope: Math.min(10, Math.ceil((Number(wizardData.impactedUsers) || 0) / 100)),
+      riskLevel: change.riskScore ? Math.ceil(change.riskScore / 10) : 5,
+      resourceRequirement: Math.min(10, Math.ceil((Number(wizardData.estimatedEffortHours) || 0) / 40)),
+      strategicAlignment: wizardData.changeReasons?.revenueImprovement || wizardData.changeReasons?.costReduction ? 8 : 5,
+    };
+
+    const weights = {
+      revenueImprovement: 2.5,
+      costSavings: 2.3,
+      customerImpact: 2.2,
+      processImprovement: 1.9,
+      internalQoL: 1.6,
+      strategicAlignment: 2.0,
+      urgency: 1.8,
+      impactScope: 1.5,
+      riskLevel: 1.4,
+      resourceRequirement: 1.0,
+    };
+
+    let totalScore = 0;
+    let totalWeight = 0;
+
+    Object.keys(factors).forEach((key) => {
+      let factorValue = factors[key as keyof typeof factors];
+      if (key === 'resourceRequirement') {
+        factorValue = 11 - factorValue; // Inverse
+      }
+      totalScore += factorValue * weights[key as keyof typeof weights];
+      totalWeight += weights[key as keyof typeof weights];
+    });
+
+    return Math.round((totalScore / totalWeight) * 10); // Scale to 0-100
+  };
+
+  // Calculate effort score using risk and impact factors
+  const calculateEffortScore = (change: any) => {
+    // Use stored effort score if available
+    if (change.effortScore !== undefined && change.effortScore !== null) {
+      return change.effortScore;
+    }
+
+    const wizardData = change.wizardData || {};
+
+    const factors = {
+      impactScope: Math.min(5, Math.ceil((Number(wizardData.impactedUsers) || 10) / 50)),
+      businessCritical: wizardData.urgencyLevel === 'high' ? 4 : wizardData.urgencyLevel === 'medium' ? 3 : 2,
+      complexity: Math.min(5, Math.ceil((Number(wizardData.estimatedEffortHours) || 10) / 40)),
+      testingCoverage: 3,
+      rollbackCapability: 3,
+      historicalFailures: 1,
+      costToImplement: Math.min(5, Math.ceil((Number(wizardData.estimatedCost) || 1000) / 2000)),
+      timeToImplement: Math.min(5, Math.ceil((Number(wizardData.estimatedEffortHours) || 10) / 40)),
+    };
+
+    const weights = {
+      impactScope: 1.5,
+      businessCritical: 1.8,
+      complexity: 1.6,
+      testingCoverage: 1.2,
+      rollbackCapability: 1.4,
+      historicalFailures: 1.7,
+      costToImplement: 2.0,
+      timeToImplement: 1.9,
+    };
+
+    let totalScore = 0;
+    let totalWeight = 0;
+
+    Object.keys(factors).forEach((key) => {
+      let factorValue = factors[key as keyof typeof factors];
+      // Inverse scoring for positive factors
+      if (key === 'testingCoverage' || key === 'rollbackCapability') {
+        factorValue = 6 - factorValue;
+      }
+      totalScore += factorValue * weights[key as keyof typeof weights];
+      totalWeight += weights[key as keyof typeof weights];
+    });
+
+    return Math.round((totalScore / totalWeight) * 20); // Scale to 0-100
+  };
 
   // Categorize changes by benefit and effort for the matrix
   const getMatrixQuadrant = (change: any) => {
-    // Mock logic - will be replaced with actual data later
-    const benefit = change.financialImpact > 5000 ? 'high' : 'low';
-    const effort = change.impactedUsers > 100 ? 'high' : 'low';
-    return { benefit, effort };
+    const benefitScore = calculateBenefitScore(change);
+    const effortScore = calculateEffortScore(change);
+
+    const benefitLevel = benefitScore >= 50 ? 'high' : 'low';
+    const effortLevel = effortScore >= 50 ? 'high' : 'low';
+
+    return { benefit: benefitLevel, effort: effortLevel };
   };
 
   const matrixData = {
@@ -262,13 +370,13 @@ export default function AdminDashboard() {
                           key={change.id}
                           to={`/changes/${change.id}`}
                           className="group relative"
-                          title={change.changeTitle}
+                          title={change.title}
                         >
                           <div className="w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer">
                             #{index + 1}
                           </div>
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                            {change.changeTitle}
+                            {change.title}
                           </div>
                         </Link>
                       ))}
@@ -293,13 +401,13 @@ export default function AdminDashboard() {
                           key={change.id}
                           to={`/changes/${change.id}`}
                           className="group relative"
-                          title={change.changeTitle}
+                          title={change.title}
                         >
                           <div className="w-12 h-12 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer">
                             #{index + 1}
                           </div>
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                            {change.changeTitle}
+                            {change.title}
                           </div>
                         </Link>
                       ))}
@@ -324,13 +432,13 @@ export default function AdminDashboard() {
                           key={change.id}
                           to={`/changes/${change.id}`}
                           className="group relative"
-                          title={change.changeTitle}
+                          title={change.title}
                         >
                           <div className="w-12 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer">
                             #{index + 1}
                           </div>
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                            {change.changeTitle}
+                            {change.title}
                           </div>
                         </Link>
                       ))}
@@ -355,13 +463,13 @@ export default function AdminDashboard() {
                           key={change.id}
                           to={`/changes/${change.id}`}
                           className="group relative"
-                          title={change.changeTitle}
+                          title={change.title}
                         >
                           <div className="w-12 h-12 bg-yellow-500 hover:bg-yellow-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer">
                             #{index + 1}
                           </div>
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                            {change.changeTitle}
+                            {change.title}
                           </div>
                         </Link>
                       ))}

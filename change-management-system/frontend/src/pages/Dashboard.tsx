@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useChangesStore } from '../store/changesStore';
 import { useAuthStore } from '../store/authStore';
@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import type { ChangeStatus } from '@cm/types';
 
 const statusConfig: Record<
-  ChangeStatus,
+  string,
   { color: string; icon: typeof CheckCircle; label: string }
 > = {
   New: { color: 'bg-blue-100 text-blue-800', icon: Clock, label: 'New' },
@@ -21,21 +21,37 @@ const statusConfig: Record<
   Failed: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Failed' },
   Cancelled: { color: 'bg-gray-100 text-gray-800', icon: XCircle, label: 'Cancelled' },
   'On Hold': { color: 'bg-orange-100 text-orange-800', icon: AlertCircle, label: 'On Hold' },
+  // MariaDB status values
+  draft: { color: 'bg-gray-100 text-gray-800', icon: FileText, label: 'Draft' },
+  submitted: { color: 'bg-blue-100 text-blue-800', icon: Clock, label: 'Submitted' },
+  under_review: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'Under Review' },
+  approved: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Approved' },
+  rejected: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Rejected' },
+  scheduled: { color: 'bg-indigo-100 text-indigo-800', icon: Clock, label: 'Scheduled' },
+  in_progress: { color: 'bg-blue-100 text-blue-800', icon: Clock, label: 'In Progress' },
+  completed: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Completed' },
+  cancelled: { color: 'bg-gray-100 text-gray-800', icon: XCircle, label: 'Cancelled' },
 };
 
 export default function Dashboard() {
   const { changes, fetchChanges, isLoading } = useChangesStore();
   const { user } = useAuthStore();
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchChanges();
   }, [fetchChanges]);
 
+  const filteredChanges = changes.filter((change) => {
+    if (statusFilter === 'all') return true;
+    return change.status === statusFilter;
+  });
+
   const stats = {
     total: changes.length,
-    pending: changes.filter((c) => c.status === 'New' || c.status === 'In Review').length,
-    inProgress: changes.filter((c) => c.status === 'In Progress' || c.status === 'Implementing').length,
-    completed: changes.filter((c) => c.status === 'Completed').length,
+    pending: changes.filter((c) => c.status === 'submitted' || c.status === 'under_review').length,
+    inProgress: changes.filter((c) => c.status === 'in_progress' || c.status === 'implementing' || c.status === 'scheduled').length,
+    completed: changes.filter((c) => c.status === 'completed' || c.status === 'implemented').length,
   };
 
   return (
@@ -134,8 +150,30 @@ export default function Dashboard() {
         {/* Change Requests Table */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-6">
-            <h2 className="text-2xl font-bold text-white">Recent Change Requests</h2>
-            <p className="text-blue-100 mt-1">Track and manage your change requests</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Change Requests</h2>
+                <p className="text-blue-100 mt-1">Track and manage your change requests</p>
+              </div>
+              <div>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-2 border border-white/20 rounded-lg bg-white/10 backdrop-blur-sm text-white focus:ring-2 focus:ring-white/50 focus:outline-none"
+                >
+                  <option value="all" className="text-gray-900">All Statuses</option>
+                  <option value="draft" className="text-gray-900">Draft</option>
+                  <option value="submitted" className="text-gray-900">Submitted</option>
+                  <option value="under_review" className="text-gray-900">Under Review</option>
+                  <option value="approved" className="text-gray-900">Approved</option>
+                  <option value="rejected" className="text-gray-900">Rejected</option>
+                  <option value="scheduled" className="text-gray-900">Scheduled</option>
+                  <option value="in_progress" className="text-gray-900">In Progress</option>
+                  <option value="completed" className="text-gray-900">Completed</option>
+                  <option value="cancelled" className="text-gray-900">Cancelled</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div className="p-6">
@@ -164,16 +202,15 @@ export default function Dashboard() {
                   <thead>
                     <tr className="border-b-2 border-gray-200 dark:border-gray-700">
                       <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Title</th>
-                      <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Type</th>
                       <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Status</th>
-                      <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Risk</th>
-                      <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Date</th>
+                      <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Date Submitted</th>
                       <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {changes.map((change) => {
-                      const StatusIcon = statusConfig[change.status].icon;
+                    {filteredChanges.map((change) => {
+                      const statusInfo = statusConfig[change.status] || statusConfig['submitted'];
+                      const StatusIcon = statusInfo.icon;
                       const riskColors = {
                         Critical: 'text-red-600 dark:text-red-400 font-bold',
                         High: 'text-orange-600 dark:text-orange-400 font-semibold',
@@ -193,35 +230,27 @@ export default function Dashboard() {
                           className="border-b border-gray-100 dark:border-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-900/10 dark:hover:to-purple-900/10 transition-colors"
                         >
                           <td className="py-4">
-                            <Link
-                              to={`/changes/${change.id}`}
-                              className="font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                            >
-                              {change.changeTitle}
-                            </Link>
-                          </td>
-                          <td className="py-4">
-                            <span className={`px-3 py-1.5 text-xs font-bold rounded-full ${typeColors[change.changeType as keyof typeof typeColors]}`}>
-                              {change.changeType}
-                            </span>
+                            <div>
+                              <div className="font-semibold text-gray-900 dark:text-white">
+                                {change.title || 'Untitled'}
+                              </div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {change.requestNumber}
+                              </div>
+                            </div>
                           </td>
                           <td className="py-4">
                             <span
                               className={`px-3 py-1.5 text-xs font-semibold rounded-full inline-flex items-center gap-1.5 ${
-                                statusConfig[change.status].color
+                                statusInfo.color
                               }`}
                             >
                               <StatusIcon size={14} />
-                              {change.status}
-                            </span>
-                          </td>
-                          <td className="py-4">
-                            <span className={`text-sm font-semibold ${riskColors[change.riskLevel as keyof typeof riskColors]}`}>
-                              {change.riskLevel}
+                              {statusInfo.label}
                             </span>
                           </td>
                           <td className="py-4 text-sm text-gray-600 dark:text-gray-400">
-                            {format(new Date(change.requestDate), 'MMM d, yyyy')}
+                            {change.submittedAt || change.createdAt ? format(new Date(change.submittedAt || change.createdAt), 'MMM d, yyyy') : 'N/A'}
                           </td>
                           <td className="py-4">
                             <Link

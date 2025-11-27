@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import type { ChangeStatus } from '@cm/types';
 
-type ProjectCategory = 'All' | 'Revenue Impact' | 'Cost Reduction' | 'Customer Impact' | 'Internal QoL';
+type ProjectCategory = 'All' | 'Revenue' | 'Cost' | 'Customer' | 'Process' | 'Internal QoL' | 'Risk';
 
 const statusConfig: Record<
   ChangeStatus,
@@ -34,7 +34,7 @@ export default function AdminDashboard() {
     fetchChanges();
   }, [fetchChanges]);
 
-  const categories: ProjectCategory[] = ['All', 'Revenue Impact', 'Cost Reduction', 'Customer Impact', 'Internal QoL'];
+  const categories: ProjectCategory[] = ['All', 'Revenue', 'Cost', 'Customer', 'Process', 'Internal QoL', 'Risk'];
 
   const handleCategoryToggle = (category: ProjectCategory) => {
     if (category === 'All') {
@@ -72,10 +72,12 @@ export default function AdminDashboard() {
         const reasons = wizardData.changeReasons || {};
 
         // Map reasons to categories
-        if (selectedCategories.includes('Revenue Impact') && reasons.revenueImprovement) return true;
-        if (selectedCategories.includes('Cost Reduction') && reasons.costReduction) return true;
-        if (selectedCategories.includes('Customer Impact') && reasons.customerImpact) return true;
+        if (selectedCategories.includes('Revenue') && reasons.revenueImprovement) return true;
+        if (selectedCategories.includes('Cost') && reasons.costReduction) return true;
+        if (selectedCategories.includes('Customer') && reasons.customerImpact) return true;
+        if (selectedCategories.includes('Process') && reasons.processImprovement) return true;
         if (selectedCategories.includes('Internal QoL') && reasons.internalQoL) return true;
+        if (selectedCategories.includes('Risk') && reasons.riskReduction) return true;
 
         return false;
       });
@@ -298,10 +300,12 @@ export default function AdminDashboard() {
               const isSelected = selectedCategories.includes(category);
               const categoryColors = {
                 'All': 'from-gray-500 to-slate-600',
-                'Revenue Impact': 'from-green-500 to-emerald-600',
-                'Cost Reduction': 'from-blue-500 to-indigo-600',
-                'Customer Impact': 'from-purple-500 to-pink-600',
+                'Revenue': 'from-green-500 to-emerald-600',
+                'Cost': 'from-blue-500 to-indigo-600',
+                'Customer': 'from-purple-500 to-pink-600',
+                'Process': 'from-cyan-500 to-teal-600',
                 'Internal QoL': 'from-orange-500 to-amber-600',
+                'Risk': 'from-red-500 to-rose-600',
               };
 
               return (

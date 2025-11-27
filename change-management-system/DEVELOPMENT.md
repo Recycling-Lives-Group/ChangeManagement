@@ -32,13 +32,13 @@ Benefits:
 
 #### Backend
 - **Express**: Minimal, flexible Node.js framework
-- **Mongoose**: MongoDB ODM with TypeScript support
+- **Sequelize**: SQL ORM with TypeScript support
 - **JWT**: Stateless authentication
 - **Socket.io**: Real-time bidirectional communication
 
 #### Database
-- **MongoDB**: Document database perfect for flexible schemas
-- Schema design balances normalization and denormalization
+- **MariaDB**: Relational database with MySQL compatibility
+- Schema design follows relational database best practices
 - Indexes on frequently queried fields (status, email, dates)
 
 ## Development Workflow
@@ -112,14 +112,13 @@ export interface Comment {
 
 **2. Update backend model:**
 ```typescript
-// backend/src/models/ChangeRequest.ts
-comments: [{
-  id: String,
-  userId: String,
-  userName: String,
-  content: String,
-  createdAt: { type: Date, default: Date.now }
-}]
+// backend/src/models/ChangeRequestSQL.ts
+// Add comments as a JSON field or create a separate Comments table
+comments: {
+  type: DataTypes.JSON,
+  allowNull: true,
+  defaultValue: []
+}
 ```
 
 **3. Add backend route:**
@@ -164,42 +163,49 @@ export default function Comments({ changeId }: { changeId: string }) {
 
 ### Database Management
 
-#### Accessing MongoDB
+#### Accessing MariaDB
 
-**Local MongoDB:**
+**Local MariaDB:**
 ```bash
-mongosh
-use change-management
+mysql -u root -p
+USE change_management;
 ```
 
 **Common queries:**
-```javascript
-// View all users
-db.users.find().pretty()
+```sql
+-- View all users
+SELECT * FROM users;
 
-// View all change requests
-db.changerequests.find().pretty()
+-- View all change requests
+SELECT * FROM change_requests;
 
-// Update user role
-db.users.updateOne(
-  { email: "user@example.com" },
-  { $set: { role: "Admin" } }
-)
+-- Update user role
+UPDATE users
+SET role = 'Admin'
+WHERE email = 'user@example.com';
 
-// Delete all change requests (careful!)
-db.changerequests.deleteMany({})
+-- Delete all change requests (careful!)
+DELETE FROM change_requests;
+
+-- View table structure
+DESCRIBE users;
+DESCRIBE change_requests;
 ```
 
 #### Seeding Test Data
 
 Create a seed script:
 
-```javascript
+```typescript
 // backend/src/scripts/seed.ts
-import { User } from '../models/User';
-import { ChangeRequest } from '../models/ChangeRequest';
+import { sequelize } from '../config/database';
+import { User } from '../models/UserSQL';
+import { ChangeRequest } from '../models/ChangeRequestSQL';
 
 async function seed() {
+  // Sync database
+  await sequelize.sync({ force: true }); // WARNING: This drops all tables!
+
   // Create test users
   await User.create({
     email: 'admin@test.com',
@@ -371,8 +377,9 @@ Use VS Code debugger:
 ### Database Security
 - Use environment variables for credentials
 - Never commit .env files
-- Use MongoDB access control
-- Regular backups
+- Use MariaDB user permissions and access control
+- Regular backups with mysqldump
+- Enable SSL/TLS for database connections in production
 
 ## Deployment
 
@@ -394,12 +401,13 @@ npm start
 
 Set environment variables on hosting platform.
 
-### Database (MongoDB Atlas)
+### Database (MariaDB Production)
 
-1. Create production cluster
-2. Whitelist application IPs
-3. Update MONGODB_URI
-4. Enable backup
+1. Set up MariaDB on production server or use managed service (AWS RDS, DigitalOcean)
+2. Configure firewall to allow only application server IPs
+3. Update DATABASE_URL in production environment
+4. Enable automated backups
+5. Set up SSL/TLS connections
 
 ## Extending the System
 

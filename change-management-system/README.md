@@ -62,7 +62,7 @@ A comprehensive full-stack Change Management application built with React, TypeS
 ### Backend
 - **Node.js** with TypeScript
 - **Express** - Web framework
-- **MongoDB + Mongoose** - Database
+- **MariaDB + Sequelize** - Database
 - **JWT** - Authentication
 - **bcryptjs** - Password hashing
 - **Socket.io** - Real-time communication
@@ -74,8 +74,8 @@ Before you begin, ensure you have the following installed:
 
 - **Node.js** (v18 or higher)
 - **npm** or **yarn**
-- **MongoDB** (v5 or higher)
-  - You can install MongoDB locally or use MongoDB Atlas (cloud)
+- **MariaDB** (v10.5 or higher) or **MySQL** (v8.0 or higher)
+  - You can install MariaDB locally or use a managed database service
 
 ## 🔧 Installation
 
@@ -116,7 +116,15 @@ Edit `.env` with your configuration:
 ```env
 NODE_ENV=development
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/change-management
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=change_management
+DB_USER=root
+DB_PASSWORD=your-database-password
+
+# Authentication
 JWT_SECRET=your-very-secure-secret-key-change-this
 JWT_EXPIRE=7d
 
@@ -149,22 +157,33 @@ Edit `.env`:
 VITE_API_URL=http://localhost:5000/api
 ```
 
-### 4. Set up MongoDB
+### 4. Set up MariaDB
 
-#### Option A: Local MongoDB
+#### Option A: Local MariaDB
 
-1. Install MongoDB from [mongodb.com](https://www.mongodb.com/try/download/community)
-2. Start MongoDB:
+1. Install MariaDB from [mariadb.org](https://mariadb.org/download/)
+2. Start MariaDB service:
    ```bash
-   mongod
+   # Windows
+   net start MariaDB
+
+   # Linux/Mac
+   sudo systemctl start mariadb
    ```
+3. Create the database:
+   ```bash
+   mysql -u root -p
+   CREATE DATABASE change_management;
+   EXIT;
+   ```
+4. Update the database credentials in `backend/.env`
 
-#### Option B: MongoDB Atlas (Cloud)
+#### Option B: Managed Database Service
 
-1. Create a free account at [mongodb.com/atlas](https://www.mongodb.com/atlas)
-2. Create a new cluster
-3. Get your connection string
-4. Update `MONGODB_URI` in `backend/.env` with your Atlas connection string
+1. Use a managed service like AWS RDS, DigitalOcean, or PlanetScale
+2. Create a MariaDB/MySQL instance
+3. Get your connection credentials
+4. Update `DB_HOST`, `DB_USER`, `DB_PASSWORD`, etc. in `backend/.env`
 
 ### 5. Build shared types
 
@@ -222,14 +241,14 @@ This builds all workspaces for production.
    - Password
 3. Click "Sign Up"
 
-**Note:** The first user will be created as a "Requester". To test admin features, you'll need to manually update the user role in MongoDB:
+**Note:** The first user will be created as a "Requester". To test admin features, you'll need to manually update the user role in MariaDB:
 
-```javascript
-// In MongoDB shell or Compass
-db.users.updateOne(
-  { email: "your-email@example.com" },
-  { $set: { role: "Admin" } }
-)
+```sql
+-- In MariaDB/MySQL shell
+USE change_management;
+UPDATE users
+SET role = 'Admin'
+WHERE email = 'your-email@example.com';
 ```
 
 ### 2. Login
@@ -334,14 +353,15 @@ npm test --workspace=frontend
 
 ## 🐛 Troubleshooting
 
-### MongoDB Connection Issues
+### Database Connection Issues
 
-**Problem:** Cannot connect to MongoDB
+**Problem:** Cannot connect to MariaDB
 
 **Solution:**
-- Ensure MongoDB is running: `mongod`
-- Check your `MONGODB_URI` in `backend/.env`
-- If using MongoDB Atlas, ensure your IP is whitelisted
+- Ensure MariaDB is running: `net start MariaDB` (Windows) or `sudo systemctl status mariadb` (Linux)
+- Check your database credentials in `backend/.env` (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
+- Verify the database exists: `SHOW DATABASES;`
+- Check MariaDB is listening on port 3306: `netstat -an | find "3306"` (Windows)
 
 ### Port Already in Use
 
@@ -361,6 +381,15 @@ npm test --workspace=frontend
 cd shared/types
 npm run build
 ```
+
+### Database Tables Not Created
+
+**Problem:** Tables don't exist in database
+
+**Solution:**
+- The tables are created automatically when the backend starts
+- Check the backend logs for any database sync errors
+- Manually sync: `sequelize.sync({ force: true })` in development (WARNING: drops all data)
 
 ### Authentication Issues
 

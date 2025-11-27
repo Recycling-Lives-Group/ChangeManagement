@@ -19,7 +19,9 @@
       "Bash(node:*)",
       "Bash(curl:*)",
       "Bash(del test-db.js)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(mysql:*)",
+      "Bash(\"C:\\Program Files\\MariaDB 12.1\\bin\\mysql.exe\" -u root -p -e \"DESCRIBE benefit_scoring_config;\" change_management)"
     ],
     "deny": [],
     "ask": []

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useChangesStore } from '../store/changesStore';
 import { useAuthStore } from '../store/authStore';
-import { CheckCircle, XCircle, Clock, AlertTriangle, Filter, Search, Eye, ThumbsUp, ThumbsDown, FileText, PoundSterling, Users, Calendar, User, TrendingUp, DollarSign, Smile, MinusCircle, BarChart3 } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, AlertTriangle, Filter, Search, Eye, ThumbsUp, ThumbsDown, FileText, PoundSterling, Users, Calendar, User, TrendingUp, DollarSign, Smile, MinusCircle, BarChart3, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import type { ChangeStatus, ChangeRequest } from '@cm/types';
@@ -31,9 +31,11 @@ export default function CABReview() {
   const { changes, fetchChanges, updateChange, isLoading } = useChangesStore();
   const { user } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('submitted');
   const [selectedChange, setSelectedChange] = useState<ChangeRequest | null>(null);
   const [comment, setComment] = useState('');
+  const [showBenefitSummary, setShowBenefitSummary] = useState(false);
+  const [showImplementationImpact, setShowImplementationImpact] = useState(false);
 
   useEffect(() => {
     fetchChanges();
@@ -48,8 +50,19 @@ export default function CABReview() {
 
   const handleDecision = async (changeId: string, decision: 'approve' | 'reject') => {
     try {
-      const newStatus = decision === 'approve' ? 'approved' : 'rejected';
-      await updateChange(changeId, { status: newStatus });
+      const endpoint = decision === 'approve' ? 'approve' : 'reject';
+      const response = await fetch(`http://localhost:5000/api/changes/${changeId}/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ comments: comment }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${decision} change request`);
+      }
 
       toast.success(`Change request ${decision === 'approve' ? 'approved' : 'rejected'} successfully!`);
 
@@ -149,6 +162,16 @@ export default function CABReview() {
                 }`}
               >
                 Approved
+              </button>
+              <button
+                onClick={() => setFilterStatus('rejected')}
+                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                  filterStatus === 'rejected'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                Rejected
               </button>
             </div>
           </div>
@@ -399,13 +422,106 @@ export default function CABReview() {
                   })()}
                 </div>
 
-                {/* Benefit Summary Card */}
-                {selectedChange.wizardData && (
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 p-6 rounded-2xl shadow-xl">
+                {/* Voting History Card - For Approved/Rejected Changes */}
+                {(selectedChange.status === 'approved' || selectedChange.status === 'rejected') && (
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl">
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                      <TrendingUp className="w-6 h-6 text-green-600" />
-                      Benefit Summary
+                      <Users className="w-6 h-6 text-indigo-600" />
+                      Voting History
                     </h3>
+                    <div className="space-y-3">
+                      {selectedChange.approvals && selectedChange.approvals.length > 0 ? (
+                        selectedChange.approvals.map((approval: any) => {
+                          const isApproved = approval.vote === 'approved';
+                          return (
+                            <div key={approval.id} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                              <div className="flex-shrink-0">
+                                {isApproved ? (
+                                  <ThumbsUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                ) : (
+                                  <ThumbsDown className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {approval.reviewerName || 'Unknown Reviewer'}
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                  Voted: {isApproved ? 'Approve' : 'Reject'} • {approval.reviewedAt ? format(new Date(approval.reviewedAt), 'MMM d, yyyy HH:mm') : 'N/A'}
+                                </p>
+                                {approval.comments && (
+                                  <p className="text-xs text-gray-700 dark:text-gray-300 mt-1 italic">
+                                    "{approval.comments}"
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-xs text-gray-500 dark:text-gray-500 italic text-center">
+                          No voting history available
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Comments Card - For Approved/Rejected Changes */}
+                {(selectedChange.status === 'approved' || selectedChange.status === 'rejected') && (
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl">
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <MessageSquare className="w-6 h-6 text-indigo-600" />
+                      Comments
+                    </h3>
+                    <div className="space-y-3">
+                      {selectedChange.comments && selectedChange.comments.length > 0 ? (
+                        selectedChange.comments.map((comment: any) => (
+                          <div key={comment.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <div className="flex items-start gap-3 mb-2">
+                              <User className="w-5 h-5 text-gray-600 dark:text-gray-400 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {comment.userName || 'Unknown User'}
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                  {comment.createdAt ? format(new Date(comment.createdAt), 'MMM d, yyyy HH:mm') : 'N/A'}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 ml-8">
+                              {comment.comment}
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-gray-500 dark:text-gray-500 italic text-center">
+                          No comments available
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Benefit Summary Card - Collapsible for Approved/Rejected */}
+                {selectedChange.wizardData && (
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 rounded-2xl shadow-xl overflow-hidden">
+                    <button
+                      onClick={() => setShowBenefitSummary(!showBenefitSummary)}
+                      className="w-full p-6 flex items-center justify-between hover:bg-green-100/50 dark:hover:bg-green-900/30 transition-colors"
+                    >
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <TrendingUp className="w-6 h-6 text-green-600" />
+                        Benefit Summary
+                      </h3>
+                      {showBenefitSummary ? (
+                        <ChevronUp className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                      )}
+                    </button>
+                    {showBenefitSummary && (
+                      <div className="px-6 pb-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {selectedChange.wizardData.revenueDetails?.expectedRevenue && (
                         <div className="text-center p-4 bg-white/80 dark:bg-gray-800/80 rounded-lg border border-green-200 dark:border-green-700">
@@ -498,15 +614,29 @@ export default function CABReview() {
                         </div>
                       </div>
                     )}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Impact Summary Card */}
+                {/* Implementation Impact Card - Collapsible for Approved/Rejected */}
                 {selectedChange.wizardData && (
-                  <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                      Implementation Impact
-                    </h3>
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+                    <button
+                      onClick={() => setShowImplementationImpact(!showImplementationImpact)}
+                      className="w-full p-6 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    >
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                        Implementation Impact
+                      </h3>
+                      {showImplementationImpact ? (
+                        <ChevronUp className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                      )}
+                    </button>
+                    {showImplementationImpact && (
+                      <div className="px-6 pb-6">
                     <div className="grid grid-cols-3 gap-4">
                       {selectedChange.wizardData.estimatedCost && (
                         <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -536,6 +666,8 @@ export default function CABReview() {
                         </div>
                       )}
                     </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -585,35 +717,16 @@ export default function CABReview() {
                   </div>
                 )}
 
-                {/* Already Decided */}
-                {selectedChange.status === 'approved' || selectedChange.status === 'rejected' && (
-                  <div className={`p-6 rounded-2xl ${
-                    selectedChange.status === 'approved'
-                      ? 'bg-green-50 dark:bg-green-900/20'
-                      : 'bg-red-50 dark:bg-red-900/20'
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      {selectedChange.status === 'approved' ? (
-                        <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <XCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
-                      )}
-                      <div>
-                        <p className={`text-lg font-semibold ${
-                          selectedChange.status === 'approved'
-                            ? 'text-green-800 dark:text-green-200'
-                            : 'text-red-800 dark:text-red-200'
-                        }`}>
-                          This change request has been {selectedChange.status}
-                        </p>
-                        <Link
-                          to={`/changes/${selectedChange.id}`}
-                          className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
-                        >
-                          View full details →
-                        </Link>
-                      </div>
-                    </div>
+                {/* View Full Details Link - For Approved/Rejected Changes */}
+                {(selectedChange.status === 'approved' || selectedChange.status === 'rejected') && (
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl">
+                    <Link
+                      to={`/changes/${selectedChange.id}`}
+                      className="block w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg font-semibold"
+                    >
+                      <Eye size={16} className="inline mr-2" />
+                      View Full Details
+                    </Link>
                   </div>
                 )}
               </div>

@@ -6,6 +6,7 @@ import { config } from './config/index.js';
 import { connectDatabase } from './config/database.js';
 import authRoutes from './routes/auth.js';
 import changeRoutes from './routes/changes.js';
+import benefitConfigRoutes from './routes/benefitConfig.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -27,6 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/changes', changeRoutes);
+app.use('/api/benefit-config', benefitConfigRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -15,16 +15,10 @@ import Layout from './components/common/Layout';
 import MetricsDashboard from './pages/MetricsDashboard';
 import ChangeCalendar from './pages/ChangeCalendar';
 import EffortAssessment from './pages/EffortAssessment';
-import CABMeetings from './pages/CABMeetings';
 import VotingSystem from './pages/VotingSystem';
 import BenefitAssessment from './pages/BenefitAssessment';
 import DependencyVisualization from './pages/DependencyVisualization';
-
-// Phase 3 Features
-import AdvancedAnalytics from './pages/AdvancedAnalytics';
-import ProcessAutomation from './pages/ProcessAutomation';
-import AIInsights from './pages/AIInsights';
-import KnowledgeBase from './pages/KnowledgeBase';
+import BenefitScoringConfig from './pages/BenefitScoringConfig';
 
 function App() {
   const { loadUser, isAuthenticated, isLoading } = useAuthStore();
@@ -170,19 +164,6 @@ function App() {
           />
 
           <Route
-            path="/cab-meetings"
-            element={
-              isAuthenticated ? (
-                <Layout>
-                  <CABMeetings />
-                </Layout>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
-
-          <Route
             path="/voting"
             element={
               isAuthenticated ? (
@@ -221,52 +202,12 @@ function App() {
             }
           />
 
-          {/* Phase 3 Feature Routes */}
           <Route
-            path="/advanced-analytics"
+            path="/benefit-scoring-config"
             element={
               isAuthenticated ? (
                 <Layout>
-                  <AdvancedAnalytics />
-                </Layout>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
-
-          <Route
-            path="/process-automation"
-            element={
-              isAuthenticated ? (
-                <Layout>
-                  <ProcessAutomation />
-                </Layout>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
-
-          <Route
-            path="/ai-insights"
-            element={
-              isAuthenticated ? (
-                <Layout>
-                  <AIInsights />
-                </Layout>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
-
-          <Route
-            path="/knowledge-base"
-            element={
-              isAuthenticated ? (
-                <Layout>
-                  <KnowledgeBase />
+                  <BenefitScoringConfig />
                 </Layout>
               ) : (
                 <Navigate to="/login" />

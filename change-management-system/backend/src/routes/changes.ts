@@ -16,7 +16,7 @@ router.route('/').get(protect, getChanges).post(protect, createChange);
 
 router.route('/:id').get(protect, getChange).put(protect, updateChange).delete(protect, deleteChange);
 
-router.post('/:id/approve', protect, authorize('CAB_Member', 'Dept_Head', 'Admin'), approveChange);
-router.post('/:id/reject', protect, authorize('CAB_Member', 'Dept_Head', 'Admin'), rejectChange);
+router.post('/:id/approve', protect, authorize('cab_member', 'manager', 'admin'), approveChange);
+router.post('/:id/reject', protect, authorize('cab_member', 'manager', 'admin'), rejectChange);
 
 export default router;

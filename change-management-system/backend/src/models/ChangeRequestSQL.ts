@@ -1,6 +1,45 @@
 import { getDatabase } from '../config/database.js';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 
+// Effort factor breakdown (8 factors, scored 1-5)
+export interface EffortFactors {
+  impactScope: number;          // 1-5: Number of users/systems affected
+  businessCritical: number;     // 1-5: How critical is the affected system
+  complexity: number;           // 1-5: Technical difficulty and complexity
+  testingCoverage: number;      // 1-5: Quality and extent of testing (inverse - higher is better)
+  rollbackCapability: number;   // 1-5: Ease of reverting changes (inverse - higher is better)
+  historicalFailures: number;   // 1-5: Past failure rate for similar changes
+  costToImplement: number;      // 1-5: Financial cost of implementation
+  timeToImplement: number;      // 1-5: Time required for implementation
+}
+
+// Individual benefit detail (for benefits that were selected)
+export interface BenefitDetail {
+  selected: true;
+  rawValue: number;           // £ or hours or count depending on benefit type
+  rawTimeline: number;        // months to realise
+  explanation: string;
+  valueScore: number;         // calculated from rawValue using config
+  timeScore: number;          // calculated from rawTimeline using config
+  combinedScore: number;      // valueScore + timeScore
+  weightedScore: number;      // combinedScore * weight
+}
+
+// Benefit factor breakdown - stores details for each benefit type
+export interface BenefitFactors {
+  revenueImprovement: BenefitDetail | null;   // £ annual revenue improvement
+  costSavings: BenefitDetail | null;          // £ annual cost reduction
+  customerImpact: BenefitDetail | null;       // number of customers affected
+  processImprovement: BenefitDetail | null;   // hours saved (hours * users)
+  internalQoL: BenefitDetail | null;          // hours saved for internal staff
+  strategicAlignment: {                       // manual score by admin
+    selected: true;
+    score: number;                            // 1-10 manual score
+    explanation: string;
+    weightedScore: number;                    // score * 10 * weight
+  } | null;
+}
+
 export interface ChangeRequestData {
   id: number;
   request_number: string;
@@ -21,6 +60,19 @@ export interface ChangeRequestData {
   actual_end: Date | null;
   created_at: Date;
   updated_at: Date;
+  // Risk assessment fields
+  risk_score: number | null;
+  risk_level: string | null;
+  risk_calculated_at: Date | null;
+  risk_calculated_by: number | null;
+  // Effort assessment fields
+  effort_score: number | null;
+  effort_factors: EffortFactors | null;
+  effort_calculated_at: Date | null;
+  // Benefit assessment fields
+  benefit_score: number | null;
+  benefit_factors: BenefitFactors | null;
+  benefit_calculated_at: Date | null;
 }
 
 export interface ChangeRequestWithUser extends ChangeRequestData {
@@ -104,7 +156,46 @@ export class ChangeRequestSQL {
       WHERE cr.id = ?`,
       [id]
     );
-    return rows.length > 0 ? (rows[0] as ChangeRequestWithUser) : null;
+
+    if (rows.length === 0) return null;
+
+    const change = rows[0] as ChangeRequestWithUser;
+
+    // Load CAB reviews
+    const [reviews] = await db.execute<RowDataPacket[]>(
+      `SELECT
+        cr.*,
+        u.id as reviewer_user_id,
+        u.username as reviewer_name,
+        u.email as reviewer_email,
+        u.first_name as reviewer_first_name,
+        u.last_name as reviewer_last_name
+      FROM cab_reviews cr
+      LEFT JOIN users u ON cr.reviewer_id = u.id
+      WHERE cr.change_request_id = ?
+      ORDER BY cr.reviewed_at DESC`,
+      [id]
+    );
+    (change as any).cab_reviews = reviews;
+
+    // Load comments
+    const [comments] = await db.execute<RowDataPacket[]>(
+      `SELECT
+        cc.*,
+        u.id as commenter_user_id,
+        u.username as commenter_name,
+        u.email as commenter_email,
+        u.first_name as commenter_first_name,
+        u.last_name as commenter_last_name
+      FROM change_comments cc
+      LEFT JOIN users u ON cc.user_id = u.id
+      WHERE cc.change_request_id = ?
+      ORDER BY cc.created_at DESC`,
+      [id]
+    );
+    (change as any).change_comments = comments;
+
+    return change;
   }
 
   static async create(data: {
@@ -197,21 +288,77 @@ export class ChangeRequestSQL {
       updates.push('scheduling_data = ?');
       params.push(JSON.stringify(data.scheduling_data));
     }
+    if (data.metrics_data !== undefined) {
+      updates.push('metrics_data = ?');
+      params.push(JSON.stringify(data.metrics_data));
+    }
+    if (data.prioritization_data !== undefined) {
+      updates.push('prioritization_data = ?');
+      params.push(JSON.stringify(data.prioritization_data));
+    }
+    if (data.custom_fields !== undefined) {
+      updates.push('custom_fields = ?');
+      params.push(JSON.stringify(data.custom_fields));
+    }
+    // Effort assessment fields
     if (data.effort_score !== undefined) {
       updates.push('effort_score = ?');
       params.push(data.effort_score);
     }
-    if (data.benefit_score !== undefined) {
-      updates.push('benefit_score = ?');
-      params.push(data.benefit_score);
+    if (data.effort_factors !== undefined) {
+      updates.push('effort_factors = ?');
+      params.push(data.effort_factors ? JSON.stringify(data.effort_factors) : null);
     }
     if (data.effort_calculated_at !== undefined) {
       updates.push('effort_calculated_at = ?');
       params.push(data.effort_calculated_at);
     }
+    // Benefit assessment fields
+    if (data.benefit_score !== undefined) {
+      updates.push('benefit_score = ?');
+      params.push(data.benefit_score);
+    }
+    if (data.benefit_factors !== undefined) {
+      updates.push('benefit_factors = ?');
+      params.push(data.benefit_factors ? JSON.stringify(data.benefit_factors) : null);
+    }
     if (data.benefit_calculated_at !== undefined) {
       updates.push('benefit_calculated_at = ?');
       params.push(data.benefit_calculated_at);
+    }
+    // Risk assessment fields
+    if (data.risk_score !== undefined) {
+      updates.push('risk_score = ?');
+      params.push(data.risk_score);
+    }
+    if (data.risk_level !== undefined) {
+      updates.push('risk_level = ?');
+      params.push(data.risk_level);
+    }
+    if (data.risk_calculated_at !== undefined) {
+      updates.push('risk_calculated_at = ?');
+      params.push(data.risk_calculated_at);
+    }
+    if (data.risk_calculated_by !== undefined) {
+      updates.push('risk_calculated_by = ?');
+      params.push(data.risk_calculated_by);
+    }
+    // Scheduling fields
+    if (data.scheduled_start !== undefined) {
+      updates.push('scheduled_start = ?');
+      params.push(data.scheduled_start);
+    }
+    if (data.scheduled_end !== undefined) {
+      updates.push('scheduled_end = ?');
+      params.push(data.scheduled_end);
+    }
+    if (data.actual_start !== undefined) {
+      updates.push('actual_start = ?');
+      params.push(data.actual_start);
+    }
+    if (data.actual_end !== undefined) {
+      updates.push('actual_end = ?');
+      params.push(data.actual_end);
     }
 
     if (updates.length === 0) {
@@ -237,33 +384,26 @@ export class ChangeRequestSQL {
   }
 
   static formatChange(change: ChangeRequestWithUser) {
-    // Parse JSON fields if they're strings
-    let wizardData = change.wizard_data;
-    if (typeof wizardData === 'string') {
-      try {
-        wizardData = JSON.parse(wizardData);
-      } catch (e) {
-        wizardData = null;
+    // Helper function to parse JSON fields
+    const parseJSON = (field: any) => {
+      if (typeof field === 'string') {
+        try {
+          return JSON.parse(field);
+        } catch (e) {
+          return null;
+        }
       }
-    }
+      return field;
+    };
 
-    let schedulingData = change.scheduling_data;
-    if (typeof schedulingData === 'string') {
-      try {
-        schedulingData = JSON.parse(schedulingData);
-      } catch (e) {
-        schedulingData = null;
-      }
-    }
-
-    let metricsData = change.metrics_data;
-    if (typeof metricsData === 'string') {
-      try {
-        metricsData = JSON.parse(metricsData);
-      } catch (e) {
-        metricsData = null;
-      }
-    }
+    // Parse all JSON fields
+    const wizardData = parseJSON(change.wizard_data);
+    const schedulingData = parseJSON(change.scheduling_data);
+    const metricsData = parseJSON(change.metrics_data);
+    const prioritizationData = parseJSON(change.prioritization_data);
+    const customFields = parseJSON(change.custom_fields);
+    const effortFactors = parseJSON(change.effort_factors);
+    const benefitFactors = parseJSON(change.benefit_factors);
 
     return {
       id: change.id.toString(),
@@ -283,6 +423,8 @@ export class ChangeRequestSQL {
       wizardData: wizardData,
       schedulingData: schedulingData,
       metricsData: metricsData,
+      prioritizationData: prioritizationData,
+      customFields: customFields,
       submittedAt: change.submitted_at,
       scheduledStart: change.scheduled_start,
       scheduledEnd: change.scheduled_end,
@@ -290,18 +432,40 @@ export class ChangeRequestSQL {
       actualEnd: change.actual_end,
       createdAt: change.created_at,
       updatedAt: change.updated_at,
-      // Assessment scores
+      // Effort assessment
       effortScore: change.effort_score,
-      benefitScore: change.benefit_score,
+      effortFactors: effortFactors,
       effortCalculatedAt: change.effort_calculated_at,
+      // Benefit assessment
+      benefitScore: change.benefit_score,
+      benefitFactors: benefitFactors,
       benefitCalculatedAt: change.benefit_calculated_at,
-      // Risk scores
+      // Risk assessment
       riskScore: change.risk_score,
       riskLevel: change.risk_level,
       riskCalculatedAt: change.risk_calculated_at,
-      riskCalculatedBy: change.risk_calculated_by,
-      approvals: [], // TODO: Load from cab_reviews table
-      comments: [], // TODO: Load from change_comments table
+      riskCalculatedBy: change.risk_calculated_by?.toString(),
+      approvals: (change as any).cab_reviews?.map((review: any) => ({
+        id: review.id.toString(),
+        reviewerId: review.reviewer_user_id?.toString(),
+        reviewerName: review.reviewer_name || `${review.reviewer_first_name || ''} ${review.reviewer_last_name || ''}`.trim(),
+        reviewerEmail: review.reviewer_email,
+        vote: review.vote,
+        riskLevel: review.risk_level,
+        comments: review.comments,
+        reviewedAt: review.reviewed_at,
+        createdAt: review.created_at,
+      })) || [],
+      comments: (change as any).change_comments?.map((comment: any) => ({
+        id: comment.id.toString(),
+        userId: comment.commenter_user_id?.toString(),
+        userName: comment.commenter_name || `${comment.commenter_first_name || ''} ${comment.commenter_last_name || ''}`.trim(),
+        userEmail: comment.commenter_email,
+        comment: comment.comment,
+        isInternal: comment.is_internal,
+        createdAt: comment.created_at,
+        updatedAt: comment.updated_at,
+      })) || [],
     };
   }
 }

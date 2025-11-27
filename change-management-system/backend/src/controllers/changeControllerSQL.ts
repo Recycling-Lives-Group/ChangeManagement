@@ -390,6 +390,7 @@ export const approveChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const { comments } = req.body;
     const change = await ChangeRequestSQL.findById(parseInt(req.params.id));
 
     if (!change) {
@@ -402,12 +403,29 @@ export const approveChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const db = (await import('../config/database.js')).getDatabase();
+
+    // Create CAB review record
+    await db.execute(
+      `INSERT INTO cab_reviews (change_request_id, reviewer_id, vote, comments, reviewed_at)
+       VALUES (?, ?, 'approved', ?, NOW())
+       ON DUPLICATE KEY UPDATE vote = 'approved', comments = ?, reviewed_at = NOW()`,
+      [change.id, req.user.id, comments || null, comments || null]
+    );
+
+    // Add comment if provided
+    if (comments) {
+      await db.execute(
+        `INSERT INTO change_comments (change_request_id, user_id, comment, is_internal)
+         VALUES (?, ?, ?, FALSE)`,
+        [change.id, req.user.id, comments]
+      );
+    }
+
     // Update change status to approved
     const updatedChange = await ChangeRequestSQL.update(change.id, {
       status: 'approved',
     });
-
-    // TODO: Create CAB review record in cab_reviews table
 
     if (!updatedChange) {
       return res.status(404).json({
@@ -450,6 +468,7 @@ export const rejectChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const { comments } = req.body;
     const change = await ChangeRequestSQL.findById(parseInt(req.params.id));
 
     if (!change) {
@@ -462,12 +481,29 @@ export const rejectChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const db = (await import('../config/database.js')).getDatabase();
+
+    // Create CAB review record
+    await db.execute(
+      `INSERT INTO cab_reviews (change_request_id, reviewer_id, vote, comments, reviewed_at)
+       VALUES (?, ?, 'rejected', ?, NOW())
+       ON DUPLICATE KEY UPDATE vote = 'rejected', comments = ?, reviewed_at = NOW()`,
+      [change.id, req.user.id, comments || null, comments || null]
+    );
+
+    // Add comment if provided
+    if (comments) {
+      await db.execute(
+        `INSERT INTO change_comments (change_request_id, user_id, comment, is_internal)
+         VALUES (?, ?, ?, FALSE)`,
+        [change.id, req.user.id, comments]
+      );
+    }
+
     // Update change status to rejected
     const updatedChange = await ChangeRequestSQL.update(change.id, {
       status: 'rejected',
     });
-
-    // TODO: Create CAB review record in cab_reviews table
 
     if (!updatedChange) {
       return res.status(404).json({

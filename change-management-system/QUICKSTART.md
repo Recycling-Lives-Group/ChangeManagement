@@ -5,7 +5,7 @@ Get the Change Management System up and running in 5 minutes!
 ## Prerequisites
 
 - Node.js 18+ installed
-- MongoDB installed and running (or MongoDB Atlas account)
+- MariaDB or MySQL installed and running (or managed database service)
 
 ## Step 1: Install Dependencies
 
@@ -33,7 +33,9 @@ cp .env.example .env
 
 Edit `backend/.env` - **At minimum, change these:**
 - `JWT_SECRET` - Use a long random string
-- `MONGODB_URI` - Your MongoDB connection string
+- `DB_USER` - Your database username (default: root)
+- `DB_PASSWORD` - Your database password
+- `DB_NAME` - Database name (default: change_management)
 
 ### Frontend Configuration
 
@@ -44,14 +46,23 @@ cp .env.example .env
 
 The defaults should work if you're running locally.
 
-## Step 4: Start MongoDB
+## Step 4: Start MariaDB and Create Database
 
-If using local MongoDB:
+If using local MariaDB:
 ```bash
-mongod
+# Windows - Start MariaDB service
+net start MariaDB
+
+# Linux/Mac - Start MariaDB service
+sudo systemctl start mariadb
+
+# Create the database
+mysql -u root -p
+CREATE DATABASE change_management;
+EXIT;
 ```
 
-If using MongoDB Atlas, make sure your cluster is running.
+If using a managed database service, ensure your instance is running and accessible.
 
 ## Step 5: Start the Application
 
@@ -74,22 +85,23 @@ This starts both frontend and backend!
 
 ## Step 7: Make Yourself an Admin (Optional)
 
-To access admin features, update your role in MongoDB:
+To access admin features, update your role in MariaDB:
 
-### Using MongoDB Shell:
+### Using MariaDB/MySQL Shell:
 ```bash
-mongosh
-use change-management
-db.users.updateOne(
-  { email: "your-email@example.com" },
-  { $set: { role: "Admin" } }
-)
+mysql -u root -p
+USE change_management;
+UPDATE users
+SET role = 'Admin'
+WHERE email = 'your-email@example.com';
+SELECT name, email, role FROM users;
+EXIT;
 ```
 
-### Using MongoDB Compass:
-1. Connect to localhost:27017
-2. Open the "change-management" database
-3. Open the "users" collection
+### Using MySQL Workbench or DBeaver:
+1. Connect to localhost:3306
+2. Open the "change_management" database
+3. Browse the "users" table
 4. Find your user and edit the "role" field to "Admin"
 
 ## Step 8: Create Your First Change Request
@@ -105,9 +117,10 @@ Your Change Management System is now running. Check out the full README.md for m
 
 ## Common Issues
 
-### "Cannot connect to MongoDB"
-- Ensure MongoDB is running: `mongod`
-- Check MONGODB_URI in backend/.env
+### "Cannot connect to database"
+- Ensure MariaDB is running: `net start MariaDB` (Windows) or `sudo systemctl status mariadb` (Linux)
+- Check database credentials in backend/.env (DB_USER, DB_PASSWORD, DB_NAME)
+- Verify database exists: `mysql -u root -p -e "SHOW DATABASES;"`
 
 ### "Module not found: @cm/types"
 - Build the shared types: `cd shared/types && npm run build`
@@ -115,6 +128,10 @@ Your Change Management System is now running. Check out the full README.md for m
 ### "Port 5000 already in use"
 - Change PORT in backend/.env
 - Update VITE_API_URL in frontend/.env
+
+### "Table doesn't exist"
+- Tables are created automatically when backend starts
+- Check backend console for database sync errors
 
 ## Next Steps
 

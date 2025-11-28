@@ -120,6 +120,12 @@ export default function ChangeForm() {
   const formData = watch();
 
   const onSubmit = async (data: FormData) => {
+    // Prevent form submission unless on final step (step 4)
+    if (currentStep !== 4) {
+      console.warn('Attempted form submission on step', currentStep, '- preventing');
+      return;
+    }
+
     try {
       const formattedData = {
         ...data,

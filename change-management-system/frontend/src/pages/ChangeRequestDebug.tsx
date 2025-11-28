@@ -69,7 +69,7 @@ export default function ChangeRequestDebug() {
         {/* Header */}
         <div className="mb-6">
           <Link
-            to="/dashboard"
+            to="/"
             className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

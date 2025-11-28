@@ -78,7 +78,7 @@ export const BenefitAssessment: React.FC = () => {
     const loadBenefitConfigs = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/benefit-config`, {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/benefit-config`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

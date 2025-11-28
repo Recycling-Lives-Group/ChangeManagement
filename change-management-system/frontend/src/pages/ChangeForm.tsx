@@ -23,23 +23,23 @@ const changeRequestSchema = z.object({
   proposedDate: z.string(),
   // Conditional fields for Step 2
   revenueDetails: z.object({
-    expectedRevenue: z.string().optional(),
-    revenueTimeline: z.string().optional(),
+    expectedRevenue: z.string().min(1, 'Expected revenue is required'),
+    revenueTimeline: z.string().min(1, 'Timeline is required'),
     revenueDescription: z.string().optional(),
   }).optional(),
   costReductionDetails: z.object({
-    expectedSavings: z.string().optional(),
-    costareas: z.string().optional(),
+    expectedSavings: z.string().min(1, 'Expected savings is required'),
+    costareas: z.string().min(1, 'Time to realise savings is required'),
     savingsDescription: z.string().optional(),
   }).optional(),
   customerImpactDetails: z.object({
-    customersAffected: z.string().optional(),
+    customersAffected: z.string().min(1, 'Number of customers is required'),
     impactDescription: z.string().optional(),
-    expectedSatisfaction: z.string().optional(),
+    expectedSatisfaction: z.string().min(1, 'Time to realise benefit is required'),
   }).optional(),
   processImprovementDetails: z.object({
-    currentIssues: z.string().optional(),
-    expectedEfficiency: z.string().optional(),
+    currentIssues: z.string().min(1, 'Time to realise is required'),
+    expectedEfficiency: z.string().min(1, 'Expected efficiency gains is required'),
     processDescription: z.string().optional(),
   }).optional(),
   internalQoLDetails: z.object({
@@ -48,9 +48,9 @@ const changeRequestSchema = z.object({
     expectedImprovements: z.string().optional(),
   }).optional(),
   riskReductionDetails: z.object({
-    currentRisks: z.string().optional(),
+    currentRisks: z.string().min(1, 'Cost if risk materialises is required'),
     riskMitigation: z.string().optional(),
-    complianceImprovement: z.string().optional(),
+    complianceImprovement: z.string().min(1, 'Time to recover is required'),
   }).optional(),
   systemsAffected: z.string(),
   impactedUsers: z.number().min(0),
@@ -502,13 +502,13 @@ export default function ChangeForm() {
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Cost Areas Affected
+                            Time to Realise Cost Savings
                           </label>
                           <input
                             {...register('costReductionDetails.costareas')}
                             type="text"
                             className="w-full px-4 py-3 rounded-lg border border-green-300 dark:border-green-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 transition-all"
-                            placeholder="e.g., Software licenses, Manual labor, Infrastructure"
+                            placeholder="e.g., 3 months, 6 months, Q3 2025"
                           />
                         </div>
                         <div>
@@ -546,13 +546,13 @@ export default function ChangeForm() {
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Expected Satisfaction Impact
+                            Time for Customers to Realise the Benefit
                           </label>
                           <input
                             {...register('customerImpactDetails.expectedSatisfaction')}
                             type="text"
                             className="w-full px-4 py-3 rounded-lg border border-purple-300 dark:border-purple-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 transition-all"
-                            placeholder="e.g., NPS increase by 10 points, Reduce complaints by 30%"
+                            placeholder="e.g., Immediate, 1 month, 3 months"
                           />
                         </div>
                         <div>
@@ -579,29 +579,29 @@ export default function ChangeForm() {
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Current Process Issues
-                          </label>
-                          <textarea
-                            {...register('processImprovementDetails.currentIssues')}
-                            rows={3}
-                            className="w-full px-4 py-3 rounded-lg border border-orange-300 dark:border-orange-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 transition-all"
-                            placeholder="Describe current bottlenecks, inefficiencies, or manual steps"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Expected Efficiency Gains
+                            Expected Efficiency Gains in Hours
                           </label>
                           <input
                             {...register('processImprovementDetails.expectedEfficiency')}
                             type="text"
                             className="w-full px-4 py-3 rounded-lg border border-orange-300 dark:border-orange-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 transition-all"
-                            placeholder="e.g., 50% time reduction, 80% automation, Eliminate 5 manual steps"
+                            placeholder="e.g., 40 hours per week, 500 hours annually"
                           />
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            How will this improve the process?
+                            Time to Realise the Efficiency Gains
+                          </label>
+                          <input
+                            {...register('processImprovementDetails.currentIssues')}
+                            type="text"
+                            className="w-full px-4 py-3 rounded-lg border border-orange-300 dark:border-orange-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 transition-all"
+                            placeholder="e.g., 2 months, Q2 2025, Immediate"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Describe the Process Improvement
                           </label>
                           <textarea
                             {...register('processImprovementDetails.processDescription')}
@@ -667,35 +667,35 @@ export default function ChangeForm() {
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Current Risks or Vulnerabilities
+                            Cost if Risk Materialises (£)
                           </label>
-                          <textarea
+                          <input
                             {...register('riskReductionDetails.currentRisks')}
-                            rows={3}
+                            type="text"
                             className="w-full px-4 py-3 rounded-lg border border-red-300 dark:border-red-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 transition-all"
-                            placeholder="Describe security vulnerabilities, compliance gaps, operational risks, etc."
+                            placeholder="e.g., £50,000, £500,000, Reputational damage"
                           />
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Risk Mitigation Strategy
+                            Time to Recover
+                          </label>
+                          <input
+                            {...register('riskReductionDetails.complianceImprovement')}
+                            type="text"
+                            className="w-full px-4 py-3 rounded-lg border border-red-300 dark:border-red-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 transition-all"
+                            placeholder="e.g., 2 weeks, 3 months, 1 year"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Risk Mitigation Suggestion
                           </label>
                           <textarea
                             {...register('riskReductionDetails.riskMitigation')}
                             rows={4}
                             className="w-full px-4 py-3 rounded-lg border border-red-300 dark:border-red-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 transition-all"
                             placeholder="Explain how this change will mitigate or eliminate the identified risks"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Compliance or Security Improvements
-                          </label>
-                          <input
-                            {...register('riskReductionDetails.complianceImprovement')}
-                            type="text"
-                            className="w-full px-4 py-3 rounded-lg border border-red-300 dark:border-red-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 transition-all"
-                            placeholder="e.g., Meets GDPR requirements, SOC 2 compliance, Reduces data breach risk by 80%"
                           />
                         </div>
                       </div>

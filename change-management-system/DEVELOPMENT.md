@@ -4,21 +4,15 @@ This guide covers development workflows, architecture decisions, and how to exte
 
 ## Architecture Overview
 
-### Monorepo Structure
-
-This project uses **npm workspaces** for managing multiple packages:
+### Project Structure
 
 ```
 change-management-system/
 ├── frontend/          # React SPA
-├── backend/           # Express API server
-└── shared/types/      # Shared TypeScript types
+└── backend/           # Express API server
 ```
 
-Benefits:
-- Shared types between frontend and backend
-- Single `npm install` for all packages
-- Consistent tooling and dependencies
+The frontend and backend are separate applications that communicate via REST API.
 
 ### Technology Decisions
 
@@ -32,9 +26,9 @@ Benefits:
 
 #### Backend
 - **Express**: Minimal, flexible Node.js framework
-- **Sequelize**: SQL ORM with TypeScript support
+- **mysql2**: MariaDB driver with promise support
 - **JWT**: Stateless authentication
-- **Socket.io**: Real-time bidirectional communication
+- **bcrypt**: Password hashing
 
 #### Database
 - **MariaDB**: Relational database with MySQL compatibility
@@ -45,119 +39,111 @@ Benefits:
 
 ### Running in Development
 
-#### Full Stack (Recommended)
+**Start Backend:**
 ```bash
+cd backend
 npm run dev
 ```
 
-#### Frontend Only
+**Start Frontend (separate terminal):**
 ```bash
 cd frontend
 npm run dev
 ```
 
-#### Backend Only
-```bash
-cd backend
-npm run dev
-```
+The backend runs on http://localhost:5000 and the frontend on http://localhost:5173.
 
 ### Making Changes
 
 #### Adding a New Feature
 
 1. **Plan the feature**
-   - Update shared types if needed
+   - Design database schema changes
    - Design API endpoints
    - Design UI components
 
-2. **Update shared types** (if needed)
-   ```bash
-   cd shared/types/src
-   # Edit index.ts
-   npm run build
-   ```
+2. **Database changes** (if needed)
+   - Update SQL schema in `backend/src/database/schema.sql`
+   - Run schema updates on your local MariaDB
+   - Create seed data if needed
 
 3. **Backend changes**
-   - Add/update models in `backend/src/models/`
    - Add/update controllers in `backend/src/controllers/`
    - Add/update routes in `backend/src/routes/`
-   - Add/update services in `backend/src/services/`
+   - Update SQL queries in controllers
 
 4. **Frontend changes**
-   - Update API service in `frontend/src/services/api.ts`
-   - Update store if needed in `frontend/src/store/`
+   - Update API service calls in pages/components
+   - Update Zustand store if needed in `frontend/src/store/`
    - Add/update components in `frontend/src/components/`
    - Add/update pages in `frontend/src/pages/`
 
 5. **Test the feature**
    - Manual testing in browser
    - API testing with Postman/Thunder Client
-   - Write unit/integration tests
+   - Test with MariaDB data
 
 #### Example: Adding a Comment Feature
 
-**1. Update shared types:**
-```typescript
-// shared/types/src/index.ts
-export interface Comment {
-  id: string;
-  changeRequestId: string;
-  userId: string;
-  userName: string;
-  content: string;
-  createdAt: Date;
-}
+**1. Update database schema:**
+```sql
+-- backend/src/database/schema.sql
+CREATE TABLE comments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  change_request_id INT NOT NULL,
+  user_id INT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (change_request_id) REFERENCES change_requests(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 ```
 
-**2. Update backend model:**
-```typescript
-// backend/src/models/ChangeRequestSQL.ts
-// Add comments as a JSON field or create a separate Comments table
-comments: {
-  type: DataTypes.JSON,
-  allowNull: true,
-  defaultValue: []
-}
-```
-
-**3. Add backend route:**
+**2. Add backend route:**
 ```typescript
 // backend/src/routes/changes.ts
 router.post('/:id/comments', protect, addComment);
+router.get('/:id/comments', protect, getComments);
 ```
 
-**4. Add controller:**
+**3. Add controller:**
 ```typescript
 // backend/src/controllers/changeController.ts
 export const addComment = async (req: AuthRequest, res: Response) => {
-  // Implementation
+  const { id } = req.params;
+  const { content } = req.body;
+  const userId = req.user?.id;
+
+  const [result] = await db.execute(
+    'INSERT INTO comments (change_request_id, user_id, content) VALUES (?, ?, ?)',
+    [id, userId, content]
+  );
+
+  res.json({ success: true, commentId: result.insertId });
 };
 ```
 
-**5. Update frontend API:**
-```typescript
-// frontend/src/services/api.ts
-addComment: async (changeId: string, content: string) => {
-  const response = await api.post(`/changes/${changeId}/comments`, { content });
-  return response.data;
-}
-```
-
-**6. Update store:**
-```typescript
-// frontend/src/store/changesStore.ts
-addComment: async (changeId: string, content: string) => {
-  await changesApi.addComment(changeId, content);
-  get().fetchChange(changeId);
-}
-```
-
-**7. Create UI component:**
+**4. Create UI component:**
 ```typescript
 // frontend/src/components/Comments.tsx
 export default function Comments({ changeId }: { changeId: string }) {
-  // Component implementation
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+
+  const handleSubmit = async () => {
+    await axios.post(`/api/changes/${changeId}/comments`, { content: newComment });
+    // Refresh comments
+  };
+
+  return (
+    <div>
+      {comments.map(comment => (
+        <div key={comment.id}>{comment.content}</div>
+      ))}
+      <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} />
+      <button onClick={handleSubmit}>Add Comment</button>
+    </div>
+  );
 }
 ```
 
@@ -194,41 +180,30 @@ DESCRIBE change_requests;
 
 #### Seeding Test Data
 
-Create a seed script:
+**Using SQL seed files:**
+```bash
+mysql -u root -p change_management < backend/src/database/seed-all-benefit-configs.sql
+```
 
-```typescript
-// backend/src/scripts/seed.ts
-import { sequelize } from '../config/database';
-import { User } from '../models/UserSQL';
-import { ChangeRequest } from '../models/ChangeRequestSQL';
+**Creating custom seed data:**
+```sql
+-- custom-seed.sql
+INSERT INTO users (email, password, name, department, phone, role)
+VALUES ('admin@test.com', '$2b$10$...', 'Admin User', 'IT', '+1234567890', 'Admin');
 
-async function seed() {
-  // Sync database
-  await sequelize.sync({ force: true }); // WARNING: This drops all tables!
-
-  // Create test users
-  await User.create({
-    email: 'admin@test.com',
-    password: 'password123',
-    name: 'Admin User',
-    department: 'IT',
-    phone: '+1234567890',
-    role: 'Admin'
-  });
-
-  // Create test change requests
-  await ChangeRequest.create({
-    // ... change request data
-  });
-}
-
-seed();
+INSERT INTO change_requests (title, description, status, user_id, wizard_data)
+VALUES (
+  'Test Change',
+  'Test description',
+  'Draft',
+  1,
+  '{}'
+);
 ```
 
 Run with:
 ```bash
-cd backend
-npx tsx src/scripts/seed.ts
+mysql -u root -p change_management < custom-seed.sql
 ```
 
 ## Code Style & Best Practices
@@ -238,7 +213,7 @@ npx tsx src/scripts/seed.ts
 - Always use explicit types
 - Avoid `any` - use `unknown` if truly needed
 - Use interfaces for objects, types for unions/intersections
-- Export types from shared package
+- Define types inline or in separate type files when needed
 
 ### React Components
 
@@ -413,16 +388,10 @@ Set environment variables on hosting platform.
 
 ### Adding a New User Role
 
-1. Update type in `shared/types/src/index.ts`
-2. Add to User model enum
-3. Add permissions in `getPermissions()` method
-4. Update frontend role checks
-
-### Adding Socket.io Events
-
-1. Define event type in shared types
-2. Emit from backend: `io.to(room).emit('event', data)`
-3. Listen in frontend: `socket.on('event', handler)`
+1. Update SQL schema to add new role to ENUM in users table
+2. Update backend role checks in middleware
+3. Update frontend role checks in components
+4. Add role-specific permissions
 
 ### Adding Email Notifications
 
@@ -445,14 +414,17 @@ Set environment variables on hosting platform.
 - Check for syntax errors
 - Ensure tsx is installed
 
-### TypeScript Errors After Adding Types
+### TypeScript Errors
 
+Check for syntax errors and restart the dev server:
 ```bash
-cd shared/types
-npm run build
-cd ../../frontend
-# or
-cd ../../backend
+# Restart backend
+cd backend
+npm run dev
+
+# Restart frontend
+cd frontend
+npm run dev
 ```
 
 ### CORS Errors
@@ -467,9 +439,11 @@ app.use(cors({ origin: 'http://localhost:5173' }));
 - [React Documentation](https://react.dev/)
 - [Vite Documentation](https://vitejs.dev/)
 - [Express Documentation](https://expressjs.com/)
-- [Mongoose Documentation](https://mongoosejs.com/)
+- [MariaDB Documentation](https://mariadb.org/documentation/)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [Tailwind CSS](https://tailwindcss.com/)
+- [React Flow](https://reactflow.dev/)
+- [Zustand](https://zustand-demo.pmnd.rs/)
 
 ## Getting Help
 
@@ -477,7 +451,9 @@ app.use(cors({ origin: 'http://localhost:5173' }));
 - Read error messages carefully
 - Use console.log liberally
 - Check network tab for API issues
-- Review MongoDB logs for database issues
+- Review MariaDB logs for database issues
+- Check backend terminal for server errors
+- Use the Debug page (`/debug/changes/:id`) to inspect change request data
 
 ## Contributing
 

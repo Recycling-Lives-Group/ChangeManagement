@@ -1,355 +1,329 @@
 # Features Implementation Checklist
 
-This document tracks all features from the original requirements and their implementation status.
+This document tracks the implementation status of all features in the Change Management System.
 
 ## Legend
-- ✅ Implemented
+- ✅ Implemented and Working
 - 🚧 Partially Implemented
-- ⏳ Planned (Phase 2)
-- 📋 Planned (Phase 3)
+- ⏳ Planned for Future
 
 ---
 
 ## Core Features
 
-### 1. User Portal Dashboard ✅
+### 1. User Authentication & Authorization ✅
 
-#### Dashboard View ✅
-- ✅ View all submitted change requests with status indicators
-- ✅ Color-coded status badges (11 status types)
-- ✅ Quick stats (Total, Pending, In Progress, Completed)
-- 🚧 Recent activity feed with timeline view
-- ⏳ Upcoming changes calendar view
+- ✅ JWT-based authentication
+- ✅ User registration and login
+- ✅ Role-based access control
+- ✅ Password hashing with bcrypt
+- ✅ Protected routes and API endpoints
 
-#### Change Request Submission Form ✅
-- ✅ Comprehensive multi-step form based on CRF
-- ✅ Basic Information section
-  - ✅ Change title
-  - ✅ Change type (Emergency, Major, Minor, Standard)
-  - ✅ Requester info (auto-filled from user)
-- ✅ Risk Assessment section
-  - ✅ Risk level selection
-  - ✅ Impacted users count
-  - ✅ Departments affected
-  - ✅ Financial impact
-  - ✅ Compliance impact checkbox
-- ✅ Implementation Details section
-  - ✅ Proposed implementation date
-  - ✅ Rollback plan
-  - ✅ Testing plan
-  - ✅ Success criteria
-  - ✅ Systems affected
-  - ✅ Dependencies (field ready)
-  - ✅ Related changes (field ready)
+### 2. Change Request Management ✅
 
-#### Form Features
-- ✅ Dynamic field validation based on change type (Zod schemas)
-- ⏳ Auto-save draft functionality
-- ⏳ File upload for supporting documents
-- ⏳ Risk assessment calculator (auto-determines risk level)
-- ⏳ Dependency tracker with visual relationship mapping
-- ⏳ Standard change catalog dropdown
-- ⏳ Real-time collaboration indicators
+#### Multi-Step Wizard Form ✅
+- ✅ Step 1: Basic Information
+  - Title, description, proposed date
+  - Benefit reasons selection (6 types)
+- ✅ Step 2: Business Benefit Details
+  - Revenue Improvement (amount, timeline, description)
+  - Cost Reduction (savings, time to realise, description)
+  - Customer Impact (customers affected, time to realise, description)
+  - Process Improvement (hours saved, time to realise, description)
+  - Internal QoL (users affected, pain points, improvements)
+  - Risk Reduction (cost if materialises, time to recover, mitigation)
+- ✅ Step 3: Impact Assessment
+  - Systems affected
+  - Users impacted
+  - Departments
+  - Estimated effort hours
+  - Estimated cost
+- ✅ Step 4: Review & Submit
 
----
+#### Form Features ✅
+- ✅ Dynamic field validation with Zod schemas
+- ✅ Required fields prevent NaN scores
+- ✅ Multi-step navigation with validation
+- ✅ Form submission guard (prevents auto-submit on step change)
+- ✅ Review screen before submission
 
-### 2. Admin Portal 🚧
-
-#### CAB Dashboard 🚧
-- ✅ Comprehensive view of all change requests
-- 🚧 Advanced filtering and search capabilities
-- ⏳ Bulk actions for approval/rejection
-- ⏳ Voting mechanism with comments
-- ⏳ Risk heat map visualization
-- ⏳ Change calendar with conflict detection
-
-#### Change Management Features ⏳
-- ⏳ Drag-and-drop change prioritization
-- ⏳ Resource allocation matrix
-- ⏳ Integration dependency visualization
-- ⏳ Automated impact analysis
-- ⏳ Communication plan generator
-- ⏳ Test result tracking
-- ⏳ Implementation checklist management
-
-#### Approval Workflow Engine 🚧
-- ✅ Multi-level approval system (L1-L4)
-- ✅ Role-based approval permissions
-- ✅ Approval/rejection with comments
-- ⏳ Configurable workflow steps
-- ⏳ Escalation rules and timing
-- ⏳ Auto-approval for standard changes
-- ⏳ Notification rules per workflow step
+#### Change Request CRUD ✅
+- ✅ Create new change requests
+- ✅ View change request details
+- ✅ Update change requests
+- ✅ Delete change requests (with confirmation)
+- ✅ List all change requests
 
 ---
 
-### 3. Recommendation Engine ⏳
+## Dashboards
 
-#### Intelligent Change Prioritization System ⏳
-- ⏳ Configurable weighting system:
-  - Business value
-  - Risk score
-  - Resource availability
-  - Dependencies
-  - Customer impact
-  - Compliance requirement
-  - Cost-benefit
-  - Strategic alignment
+### 3. User Dashboard ✅
 
-#### Features ⏳
-- ⏳ Visual weight adjustment sliders
-- ⏳ Scenario modeling ("What if" analysis)
-- 📋 ML-based pattern recognition
-- ⏳ Recommendation explanations
-- ⏳ Override capability with justification tracking
-- 📋 A/B testing for prioritization strategies
+- ✅ View all submitted change requests
+- ✅ Colour-coded status badges
+- ✅ Benefit reason icons with hover tooltips
+- ✅ Quick actions (View Details, Debug, Delete)
+- ✅ Status filter
+- ✅ Request number display
+- ✅ Submission date tracking
 
----
+### 4. Metrics Dashboard ✅
 
-### 4. Metrics & Reporting ⏳
+- ✅ Real-time analytics from MariaDB
+- ✅ **Charts:**
+  - Pie chart: Changes by benefit type
+  - Bar chart: Revenue improvement & cost savings (£)
+  - Hours saved metric
+- ✅ **KPI Cards:**
+  - New changes submitted
+  - Rejected changes
+  - Scheduled changes
+  - Completed changes
+- ✅ Database connectivity
+- ✅ Auto-refresh data
 
-#### KPI Dashboard ⏳
-Display real-time metrics:
-- ⏳ Change Success Rate (Target: >95%)
-- ⏳ Emergency Change % (Target: <10%)
-- ⏳ On-Time Delivery (Target: >90%)
-- ⏳ Failed Changes (Target: <5%)
-- ⏳ Post-Implementation Issues (Target: <10%)
-- ⏳ CAB Attendance (Target: >80%)
-- ⏳ Documentation Compliance (100%)
+### 5. Admin Dashboard 🚧
 
-#### Reporting Features ⏳
-- ⏳ Customizable dashboard widgets
-- ⏳ Trend analysis with predictive insights
-- ⏳ Department-level scorecards
-- ⏳ Change velocity tracking
-- ⏳ Root cause analysis for failed changes
-- ⏳ Exportable reports (PDF, Excel)
-- ⏳ Automated weekly/monthly reports
+- ✅ Organization-wide view
+- ✅ User management interface
+- 🚧 System settings
+- ⏳ Advanced analytics
 
 ---
 
-### 5. Communication Hub ⏳
+## Assessment & Scoring
 
-#### Notification System 🚧
-- ✅ In-app notification framework ready
-- ⏳ Multi-channel notifications:
-  - ✅ In-app (UI ready)
-  - ⏳ Email
-  - ⏳ Slack integration
-- ⏳ Customizable notification templates
-- ⏳ Stakeholder communication matrix
-- ⏳ Automated reminders for pending actions
-- ⏳ Escalation alerts
+### 6. Benefit Scoring System ✅
 
-#### Change Calendar 🚧
-- 🚧 Interactive calendar with change windows
-- ⏳ Blackout period management
-- ⏳ Conflict detection and resolution
+#### Database-Driven Configuration ✅
+- ✅ `benefit_scoring_config` table
+- ✅ Configurable thresholds per benefit type
+- ✅ Time decay parameters
+- ✅ 6 benefit types configured:
+  - Revenue Improvement (£100,000 = 100 pts, 5 decay/mo)
+  - Cost Reduction (£80,000 = 100 pts, 4 decay/mo)
+  - Customer Impact (10,000 customers = 100 pts, 3 decay/mo)
+  - Process Improvement (100% = 100 pts, 2 decay/mo)
+  - Internal QoL (500 employees = 100 pts, 2 decay/mo)
+  - Strategic Alignment (10/10 = 100 pts, 0 decay)
 
----
+#### Calculation Engine ✅
+- ✅ Base score calculation (raw value vs threshold)
+- ✅ Timeline score calculation (with decay)
+- ✅ Combined scoring (0-200 scale)
+- ✅ Weighted scoring
+- ✅ Normalization to 0-100 final score
+- ✅ Multi-benefit support
 
+### 7. Benefit Assessment Page ✅
 
----
+- ✅ Priority weight configuration
+- ✅ Individual change scoring
+- ✅ Eisenhower Matrix visualization
+- ✅ Benefit factor breakdown
+- ✅ Real-time score calculation
+- ✅ Uses database configs
+- ✅ Save weighted scores
 
-### 7. Role-Based Access Control ✅
+### 8. Effort Assessment Page ✅
 
-- ✅ 6 user roles implemented:
-  - ✅ Requester
-  - ✅ Coordinator
-  - ✅ CAB_Member
-  - ✅ Dept_Head
-  - ✅ Implementer
-  - ✅ Admin
-
-- ✅ Permission system:
-  - ✅ createRequest
-  - ✅ viewAllRequests
-  - ✅ approve (with levels)
-  - ✅ modifyEngine (ready)
-  - ✅ generateReports (ready)
-  - ✅ manageUsers (ready)
-
----
-
-## UI/UX Requirements
-
-### Design System ✅
-- ✅ Clean, modern interface
-- ✅ Dark/light mode toggle (built-in)
-- ✅ Responsive design (mobile, tablet, desktop)
-- 🚧 Accessibility compliant (WCAG 2.1 Level AA) - needs testing
-- ✅ Consistent Lucide icons for actions and status
-
-### Key UI Components
-1. ✅ **Status Indicators** - Color-coded badges with icons
-   - ✅ Emergency (AlertCircle)
-   - ✅ Major (AlertTriangle)
-   - ✅ Minor (Info)
-   - ✅ Standard (CheckCircle)
-   - ✅ All 11 status types implemented
-
-2. ⏳ **Interactive Timeline** - Visual change progression
-3. ⏳ **Kanban Board** - Drag-and-drop change management
-4. ⏳ **Risk Matrix** - Interactive 5x5 grid
-5. ⏳ **Dependency Graph** - D3.js or React Flow visualization
-6. 🚧 **Quick Actions Menu** - Floating action button
+- ✅ Effort vs benefit evaluation
+- ✅ Eisenhower Matrix prioritization
+- ✅ Quadrant-based recommendations
+- ✅ Visual matrix display
 
 ---
 
-## Database Schema ✅
+## Planning & Workflow Tools
 
-### Core Collections ✅
-1. ✅ **users** - User profiles and roles
-2. ✅ **changerequests** - All change request data
-3. ⏳ **documents** - Attached files and templates
-4. ⏳ **metrics** - Historical performance data
-5. ⏳ **communication_log** - Notifications and messages
-6. ⏳ **engine_configurations** - Prioritization engine settings
-7. ⏳ **audit_trail** - Complete activity log (partially in change requests)
+### 9. Change Planning Board ✅
 
----
+- ✅ Visual dependency planning with React Flow
+- ✅ Drag-and-drop change cards
+- ✅ Connect cards to show dependencies/blockers
+- ✅ Auto-loads changes from database
+- ✅ Interactive canvas (zoom, pan)
+- ✅ Connection handles (blue dots)
+- ✅ Real-time card positioning
+- ✅ Delete connections
 
-## API Endpoints
+### 10. Change Calendar 🚧
 
-### RESTful API Structure ✅
-- ✅ POST   /api/changes - Create new change request
-- ✅ GET    /api/changes - List changes (with filters)
-- ✅ GET    /api/changes/:id - Get specific change
-- ✅ PUT    /api/changes/:id - Update change
-- ✅ DELETE /api/changes/:id - Cancel change
-- ✅ POST   /api/changes/:id/approve - Approve change
-- ✅ POST   /api/changes/:id/reject - Reject change
-- ⏳ POST   /api/changes/:id/implement - Mark as implementing
-- ⏳ POST   /api/changes/:id/complete - Mark as complete
-- ⏳ GET    /api/recommendations - Get prioritized change list
-- ⏳ PUT    /api/engine/config - Update engine configuration
-- ⏳ POST   /api/engine/simulate - Run what-if scenarios
-- ⏳ GET    /api/metrics - Get KPI data
-- ⏳ GET    /api/reports/generate - Generate reports
+- 🚧 Basic calendar view
+- ⏳ Conflict detection
+- ⏳ Resource allocation
+- ⏳ Timeline visualization
 
-### Authentication Endpoints ✅
-- ✅ POST /api/auth/register
-- ✅ POST /api/auth/login
-- ✅ GET  /api/auth/me
+### 11. CAB Review Interface 🚧
+
+- 🚧 Review page exists
+- ⏳ Voting mechanism
+- ⏳ Approval workflow
+- ⏳ Comments system
 
 ---
 
-## Implementation Priorities
+## Configuration & Management
 
-### Phase 1 (MVP) - COMPLETED ✅
-1. ✅ Basic user authentication and roles
-2. ✅ Change request submission form
-3. ✅ Simple approval workflow
-4. ✅ Status tracking dashboard
-5. ✅ Basic CAB view
+### 12. Benefit Scoring Configuration ✅
 
-### Phase 2 - IN PROGRESS 🚧
-1. ⏳ Full admin portal
-2. ⏳ Recommendation engine with configurable weights
-3. ⏳ Metrics dashboard
-4. ⏳ Communication system
+- ✅ View all benefit configs
+- ✅ Edit configuration values
+- ✅ Update thresholds
+- ✅ Modify time decay parameters
+- ✅ Real-time updates
 
----
+### 13. User Management 🚧
 
-## Special Considerations
-
-### Emergency Change Handling 🚧
-- ✅ Emergency change type supported
-- ⏳ Fast-track workflow with minimal approvals
-- ⏳ Retrospective documentation workflow
-
-### Standard Change Catalog ⏳
-- ⏳ Pre-populated catalog
-- ⏳ Standard changes dropdown:
-  - User access requests
-  - Password resets
-  - Report modifications
-  - etc.
-
-### Compliance ✅
-- ✅ Audit trail for all actions (in change history)
-- ⏳ 3-year data retention policy
-- ⏳ GDPR compliance features
-
-### Performance ✅
-- ✅ Pagination for large datasets
-- ✅ Efficient MongoDB queries with indexes
-- 🚧 Lazy loading for large datasets
-- 🚧 Caching strategy
-- ✅ Optimistic UI updates
-
-### Testing Requirements ⏳
-- ⏳ Unit tests for all components
-- ⏳ Integration tests for workflows
-- ⏳ E2E tests for critical paths
-- ⏳ Load testing for concurrent users
+- ✅ User registration
+- ✅ Role assignment
+- 🚧 User list view
+- ⏳ Edit user roles
+- ⏳ Deactivate users
 
 ---
 
+## Developer Tools
+
+### 14. Debug Page ✅
+
+- ✅ View raw change request data
+- ✅ Inspect wizard_data JSON
+- ✅ View effort/benefit scores
+- ✅ View benefit factors breakdown
+- ✅ Navigation from dashboard (bug icon)
+- ✅ Direct URL access (`/debug/changes/:id`)
 
 ---
 
-## Success Criteria
+## Data Quality & Validation
 
-### Performance Targets
-- 🚧 Handle 1000+ concurrent users (needs testing)
-- ✅ Process change requests in <2 seconds
-- ⏳ Generate reports in <5 seconds
-- ⏳ Maintain 99.9% uptime
-- ⏳ Pass security audit requirements
-- ⏳ Score 90+ on Lighthouse performance
-- ⏳ Support offline mode for form drafts
-- ✅ Provide real-time updates (Socket.io ready)
+### 15. Form Validation ✅
 
----
+- ✅ Zod schema validation
+- ✅ Required field enforcement
+- ✅ Type checking
+- ✅ Custom error messages
+- ✅ Prevents NaN scores
 
-## Summary Statistics
+### 16. Database Integrity ✅
 
-### Overall Progress
-
-**Phase 1 (MVP): 100% Complete** ✅
-- All core functionality implemented
-- Authentication and authorization working
-- Change request management functional
-- Basic dashboards operational
-
-**Phase 2: 15% Complete** 🚧
-- Foundation laid for advanced features
-- Types and interfaces defined
-- Socket.io infrastructure ready
-
-### Feature Categories
-
-| Category | Implemented | Partial | Planned | Total | Progress |
-|----------|------------|---------|---------|-------|----------|
-| Authentication & Auth | 6 | 0 | 0 | 6 | 100% |
-| Change Management | 10 | 3 | 4 | 17 | 76% |
-| Admin Features | 2 | 2 | 6 | 10 | 40% |
-| Reporting & Metrics | 0 | 0 | 12 | 12 | 0% |
-| Communication | 1 | 0 | 5 | 6 | 17% |
-| UI Components | 8 | 2 | 3 | 13 | 77% |
-| **TOTAL** | **27** | **7** | **30** | **64** | **53%** |
+- ✅ MariaDB constraints
+- ✅ Foreign key relationships
+- ✅ NOT NULL constraints
+- ✅ Default values
+- ✅ JSON data validation
 
 ---
 
-## Next Steps for Development
+## UI/UX Features
 
-### Immediate Priorities (Phase 2)
-1. File upload for attachments
-2. Email notification system
-3. Advanced filtering and search
-4. Metrics dashboard with charts
-5. Recommendation engine
-6. Effort/Benefit assessment integration
+### 17. Design & Styling ✅
 
-### Quick Wins
-- Add more status transitions
-- Implement change comments
-- Add user profile page
-- Export change requests to CSV
-- Add search functionality
+- ✅ TailwindCSS styling
+- ✅ Dark mode support
+- ✅ Responsive design
+- ✅ Gradient backgrounds
+- ✅ Hover effects and transitions
+- ✅ Toast notifications (Sonner)
+- ✅ Loading states
+- ✅ Error messages
+
+### 18. Icons & Visual Indicators ✅
+
+- ✅ Lucide React icons
+- ✅ Benefit type icons (Banknote, TrendingDown, Users, Zap, Heart, Target)
+- ✅ Status badges
+- ✅ Colour-coded elements
+- ✅ Tooltips with hover
 
 ---
 
-Last Updated: 2025-11-24
+## API & Backend
+
+### 19. RESTful API ✅
+
+**Authentication:**
+- ✅ `POST /api/auth/register`
+- ✅ `POST /api/auth/login`
+- ✅ `GET /api/auth/me`
+
+**Change Requests:**
+- ✅ `GET /api/changes`
+- ✅ `GET /api/changes/:id`
+- ✅ `POST /api/changes`
+- ✅ `PUT /api/changes/:id`
+- ✅ `DELETE /api/changes/:id`
+- ✅ `PUT /api/changes/:id/benefit-score`
+
+**Benefit Configuration:**
+- ✅ `GET /api/benefit-config`
+- ✅ `POST /api/benefit-config`
+- ✅ `PUT /api/benefit-config/:id`
+
+**Metrics:**
+- ✅ `GET /api/metrics`
+
+### 20. Database ✅
+
+- ✅ MariaDB 12.1
+- ✅ mysql2 driver
+- ✅ Connection pooling
+- ✅ SQL schema (`schema.sql`)
+- ✅ Seed data (`seed-all-benefit-configs.sql`)
+
+---
+
+## Localization
+
+### 21. UK Localization ✅
+
+- ✅ £ (GBP) currency symbol throughout
+- ✅ UK date formats
+- ✅ UK spelling (colour, realise, etc.)
+- ✅ Financial calculations in GBP
+
+---
+
+## Features Planned for Future
+
+### Phase 2 ⏳
+- ⏳ File upload for change requests
+- ⏳ Attachment management
+- ⏳ Comments system
+- ⏳ Approval workflow automation
+- ⏳ Email notifications
+- ⏳ Real-time updates (Socket.io integration)
+- ⏳ Auto-save drafts
+- ⏳ Change templates
+- ⏳ Bulk operations
+
+### Phase 3 ⏳
+- ⏳ Advanced reporting
+- ⏳ Export to PDF/Excel
+- ⏳ Audit trail visualization
+- ⏳ Integration with external systems
+- ⏳ Mobile app
+- ⏳ Advanced conflict detection
+- ⏳ Resource scheduling
+- ⏳ Automated risk assessment
+
+---
+
+## Summary
+
+**Total Features Implemented:** 21 major features
+**Fully Complete:** 17
+**Partially Complete:** 4
+**Planned:** 2 phases
+
+**Key Achievements:**
+- ✅ Complete multi-step wizard with validation
+- ✅ Database-driven benefit scoring system
+- ✅ Real-time metrics dashboard
+- ✅ Visual dependency planning
+- ✅ UK localization throughout
+- ✅ TypeScript full-stack
+- ✅ Modern React 19 + Vite frontend
+- ✅ MariaDB backend with SQL

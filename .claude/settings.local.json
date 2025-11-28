@@ -1,27 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)",
-      "Bash(npm create:*)",
-      "Bash(npm run build:*)",
-      "Bash(npm run dev:*)",
-      "Bash(gh auth:*)",
-      "Bash(gh repo create:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(npm install:*)",
-      "Bash(find:*)",
-      "Bash(grep:*)",
-      "Bash(timeout:*)",
-      "Bash(netstat:*)",
-      "Bash(findstr:*)",
-      "Bash(taskkill:*)",
-      "Bash(node:*)",
-      "Bash(curl:*)",
-      "Bash(del test-db.js)",
-      "Bash(cat:*)",
-      "Bash(mysql:*)",
-      "Bash(\"C:\\Program Files\\MariaDB 12.1\\bin\\mysql.exe\" -u root -p -e \"DESCRIBE benefit_scoring_config;\" change_management)"
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

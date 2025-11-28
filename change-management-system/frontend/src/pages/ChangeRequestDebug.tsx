@@ -227,51 +227,105 @@ export default function ChangeRequestDebug() {
           </Section>
 
           {/* Effort Factors */}
-          {data.effortFactors && Object.keys(effortFactors).length > 0 && (
-            <Section title="Effort Factors (Calculated)" icon={<Clock className="w-5 h-5" />} fullWidth>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {effortFactors.impactScope && <FactorBadge label="Impact Scope" value={effortFactors.impactScope} />}
-                {effortFactors.businessCritical && <FactorBadge label="Business Critical" value={effortFactors.businessCritical} />}
-                {effortFactors.complexity && <FactorBadge label="Complexity" value={effortFactors.complexity} />}
-                {effortFactors.testingCoverage && <FactorBadge label="Testing Coverage" value={effortFactors.testingCoverage} inverse />}
-                {effortFactors.rollbackCapability && <FactorBadge label="Rollback Capability" value={effortFactors.rollbackCapability} inverse />}
-                {effortFactors.historicalFailures && <FactorBadge label="Historical Failures" value={effortFactors.historicalFailures} />}
-                {effortFactors.costToImplement && <FactorBadge label="Cost to Implement" value={effortFactors.costToImplement} />}
-                {effortFactors.timeToImplement && <FactorBadge label="Time to Implement" value={effortFactors.timeToImplement} />}
+          {data.effortScore !== null && data.effortScore !== undefined && (
+            <Section title="Effort Score Calculation" icon={<Clock className="w-5 h-5" />} fullWidth>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-bold text-orange-900">Final Effort Score: {data.effortScore}/100</h3>
+                  <span className="text-sm text-orange-700">Level: {data.effortScore < 25 ? 'Low' : data.effortScore < 50 ? 'Medium' : data.effortScore < 75 ? 'High' : 'Very High'}</span>
+                </div>
+                <p className="text-sm text-gray-700">
+                  Formula: (Weighted Factor Sum / Total Weights) × 20 = Score out of 100
+                </p>
               </div>
+
+              {data.effortFactors && Object.keys(effortFactors).length > 0 ? (
+                <>
+                  <h4 className="font-semibold text-gray-700 mb-3">Individual Factors (1-5 scale):</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {effortFactors.impactScope && <FactorBadge label="Impact Scope" value={effortFactors.impactScope} weight={1.5} />}
+                    {effortFactors.businessCritical && <FactorBadge label="Business Critical" value={effortFactors.businessCritical} weight={1.8} />}
+                    {effortFactors.complexity && <FactorBadge label="Complexity" value={effortFactors.complexity} weight={1.6} />}
+                    {effortFactors.testingCoverage && <FactorBadge label="Testing Coverage" value={effortFactors.testingCoverage} weight={1.2} inverse />}
+                    {effortFactors.rollbackCapability && <FactorBadge label="Rollback Capability" value={effortFactors.rollbackCapability} weight={1.4} inverse />}
+                    {effortFactors.historicalFailures && <FactorBadge label="Historical Failures" value={effortFactors.historicalFailures} weight={1.7} />}
+                    {effortFactors.costToImplement && <FactorBadge label="Cost to Implement" value={effortFactors.costToImplement} weight={2.0} />}
+                    {effortFactors.timeToImplement && <FactorBadge label="Time to Implement" value={effortFactors.timeToImplement} weight={1.9} />}
+                  </div>
+                  <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
+                    <strong>How it's calculated:</strong> Each factor (1-5) is multiplied by its weight. The sum is divided by total weights, then multiplied by 20 to get a 0-100 score.
+                    Inverse factors (Testing Coverage, Rollback Capability) are flipped: score = 6 - value.
+                  </div>
+                </>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm">
+                  <p className="text-amber-900 font-semibold mb-2">⚠️ Factor Breakdown Not Saved</p>
+                  <p className="text-amber-800">
+                    The effort score ({data.effortScore}) was calculated, but the individual factor values weren't saved to the database.
+                    To see the detailed breakdown, the <code className="bg-amber-100 px-1 rounded">effort_factors</code> JSON field needs to be populated when the score is calculated.
+                  </p>
+                </div>
+              )}
             </Section>
           )}
 
           {/* Benefit Factors */}
-          {data.benefitFactors && Object.keys(benefitFactors).length > 0 && (
-            <Section title="Benefit Factors (Calculated)" icon={<CheckCircle2 className="w-5 h-5" />} fullWidth>
-              <div className="space-y-3">
-                {benefitFactors.revenueImprovement && (
-                  <BenefitCard title="Revenue Improvement" data={benefitFactors.revenueImprovement} />
-                )}
-                {benefitFactors.costSavings && (
-                  <BenefitCard title="Cost Savings" data={benefitFactors.costSavings} />
-                )}
-                {benefitFactors.customerImpact && (
-                  <BenefitCard title="Customer Impact" data={benefitFactors.customerImpact} />
-                )}
-                {benefitFactors.processImprovement && (
-                  <BenefitCard title="Process Improvement" data={benefitFactors.processImprovement} />
-                )}
-                {benefitFactors.internalQoL && (
-                  <BenefitCard title="Internal QoL" data={benefitFactors.internalQoL} />
-                )}
-                {benefitFactors.strategicAlignment && (
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                    <h5 className="font-semibold text-purple-900 mb-1">Strategic Alignment</h5>
-                    <p className="text-sm text-gray-700 mb-2">{benefitFactors.strategicAlignment.explanation}</p>
-                    <div className="flex gap-4 text-sm">
-                      <span>Score: <strong>{benefitFactors.strategicAlignment.score}/10</strong></span>
-                      <span>Weighted: <strong>{benefitFactors.strategicAlignment.weightedScore?.toFixed(2)}</strong></span>
-                    </div>
-                  </div>
-                )}
+          {data.benefitScore !== null && data.benefitScore !== undefined && (
+            <Section title="Benefit Score Calculation" icon={<CheckCircle2 className="w-5 h-5" />} fullWidth>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-bold text-green-900">Final Benefit Score: {data.benefitScore}/100</h3>
+                  <span className="text-sm text-green-700">Priority: {data.benefitScore >= 75 ? 'Critical' : data.benefitScore >= 50 ? 'High' : data.benefitScore >= 25 ? 'Medium' : 'Low'}</span>
+                </div>
+                <p className="text-sm text-gray-700">
+                  Formula: (Weighted Factor Sum / Total Weights) × 10 = Score out of 100
+                </p>
               </div>
+
+              {data.benefitFactors && Object.keys(benefitFactors).length > 0 ? (
+                <>
+                  <h4 className="font-semibold text-gray-700 mb-3">Individual Benefit Factors:</h4>
+                  <div className="space-y-3">
+                    {benefitFactors.revenueImprovement && (
+                      <BenefitCard title="Revenue Improvement" data={benefitFactors.revenueImprovement} weight={2.5} />
+                    )}
+                    {benefitFactors.costSavings && (
+                      <BenefitCard title="Cost Savings" data={benefitFactors.costSavings} weight={2.3} />
+                    )}
+                    {benefitFactors.customerImpact && (
+                      <BenefitCard title="Customer Impact" data={benefitFactors.customerImpact} weight={2.2} />
+                    )}
+                    {benefitFactors.processImprovement && (
+                      <BenefitCard title="Process Improvement" data={benefitFactors.processImprovement} weight={1.9} />
+                    )}
+                    {benefitFactors.internalQoL && (
+                      <BenefitCard title="Internal QoL" data={benefitFactors.internalQoL} weight={1.6} />
+                    )}
+                    {benefitFactors.strategicAlignment && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <h5 className="font-semibold text-purple-900 mb-1">Strategic Alignment (Weight: 2.0)</h5>
+                        <p className="text-sm text-gray-700 mb-2">{benefitFactors.strategicAlignment.explanation}</p>
+                        <div className="flex gap-4 text-sm">
+                          <span>Score: <strong>{benefitFactors.strategicAlignment.score}/10</strong></span>
+                          <span>Weighted: <strong>{benefitFactors.strategicAlignment.weightedScore?.toFixed(2)}</strong></span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
+                    <strong>How it's calculated:</strong> Each benefit factor (1-10 or calculated value) is multiplied by its weight (shown in parentheses).
+                    The sum is divided by total weights, then multiplied by 10 to get a 0-100 score. Higher weights = more important to final score.
+                  </div>
+                </>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm">
+                  <p className="text-amber-900 font-semibold mb-2">⚠️ Factor Breakdown Not Saved</p>
+                  <p className="text-amber-800">
+                    The benefit score ({data.benefitScore}) was calculated, but the individual factor values and calculations weren't saved to the database.
+                    To see the detailed breakdown with raw values, timelines, and weighted scores, the <code className="bg-amber-100 px-1 rounded">benefit_factors</code> JSON field needs to be populated when the score is calculated.
+                  </p>
+                </div>
+              )}
             </Section>
           )}
 
@@ -386,7 +440,7 @@ function DetailCard({ title, color, children }: any) {
   );
 }
 
-function FactorBadge({ label, value, inverse = false }: any) {
+function FactorBadge({ label, value, weight, inverse = false }: any) {
   const getColor = (val: number, inv: boolean) => {
     const adjustedVal = inv ? (6 - val) : val;
     if (adjustedVal >= 4) return 'bg-red-100 text-red-800 border-red-300';
@@ -394,23 +448,30 @@ function FactorBadge({ label, value, inverse = false }: any) {
     return 'bg-green-100 text-green-800 border-green-300';
   };
 
+  const adjustedValue = inverse ? (6 - value) : value;
+  const weighted = adjustedValue * weight;
+
   return (
     <div className={`border rounded-lg p-3 text-center ${getColor(value, inverse)}`}>
       <div className="text-xs font-medium mb-1">{label}</div>
       <div className="text-2xl font-bold">{value}/5</div>
-      {inverse && <div className="text-xs mt-1 opacity-75">(inverse)</div>}
+      {inverse && <div className="text-xs mt-1 opacity-75">(inverse = {adjustedValue})</div>}
+      <div className="text-xs mt-2 border-t pt-2">
+        <div>Weight: <strong>{weight}</strong></div>
+        <div>Contribution: <strong>{weighted.toFixed(2)}</strong></div>
+      </div>
     </div>
   );
 }
 
-function BenefitCard({ title, data }: any) {
+function BenefitCard({ title, data, weight }: any) {
   if (!data) return null;
 
   return (
     <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-      <h5 className="font-semibold text-green-900 mb-2">{title}</h5>
+      <h5 className="font-semibold text-green-900 mb-2">{title} (Weight: {weight})</h5>
       <p className="text-sm text-gray-700 mb-2">{data.explanation || 'No explanation provided'}</p>
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
         <div className="bg-white rounded p-2">
           <div className="text-gray-600">Raw Value</div>
           <div className="font-bold text-gray-900">{data.rawValue || 'N/A'}</div>
@@ -420,9 +481,20 @@ function BenefitCard({ title, data }: any) {
           <div className="font-bold text-gray-900">{data.rawTimeline || 'N/A'} mo</div>
         </div>
         <div className="bg-white rounded p-2">
-          <div className="text-gray-600">Weighted Score</div>
+          <div className="text-gray-600">Value Score</div>
+          <div className="font-bold text-blue-700">{data.valueScore?.toFixed(2) || 'N/A'}</div>
+        </div>
+        <div className="bg-white rounded p-2">
+          <div className="text-gray-600">Time Score</div>
+          <div className="font-bold text-blue-700">{data.timeScore?.toFixed(2) || 'N/A'}</div>
+        </div>
+        <div className="bg-white rounded p-2">
+          <div className="text-gray-600">Weighted</div>
           <div className="font-bold text-green-700">{data.weightedScore?.toFixed(2) || 'N/A'}</div>
         </div>
+      </div>
+      <div className="mt-2 text-xs text-gray-600 bg-white rounded p-2">
+        <strong>Calculation:</strong> Value Score ({data.valueScore?.toFixed(1)}) + Time Score ({data.timeScore?.toFixed(1)}) = {data.combinedScore?.toFixed(1)} × Weight ({weight}) = <strong className="text-green-700">{data.weightedScore?.toFixed(2)}</strong>
       </div>
     </div>
   );

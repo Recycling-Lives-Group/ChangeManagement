@@ -58,9 +58,10 @@ export default function ChangeRequestDebug() {
     );
   }
 
-  const wizardData = data.wizard_data || {};
-  const effortFactors = data.effort_factors || {};
-  const benefitFactors = data.benefit_factors || {};
+  // API returns camelCase (formatted by backend)
+  const wizardData = data.wizardData || {};
+  const effortFactors = data.effortFactors || {};
+  const benefitFactors = data.benefitFactors || {};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
@@ -88,11 +89,11 @@ export default function ChangeRequestDebug() {
           </div>
 
           <h1 className="text-3xl font-bold text-gray-900">
-            {data.title || wizardData.changeTitle || 'Untitled Change Request'}
+            {wizardData.changeTitle || data.title || 'Untitled Change Request'}
           </h1>
           <p className="text-gray-600 mt-2">
-            Status: <span className="font-semibold">{data.status}</span> |
-            Priority: <span className="font-semibold ml-2">{data.priority}</span>
+            Status: <span className="font-semibold capitalize">{data.status}</span> |
+            Priority: <span className="font-semibold capitalize ml-2">{data.priority}</span>
           </p>
         </div>
 
@@ -101,22 +102,22 @@ export default function ChangeRequestDebug() {
           <StatCard
             icon={<TrendingUp className="w-6 h-6" />}
             title="Risk Score"
-            value={data.risk_score || 'Not calculated'}
-            subtitle={data.risk_level || ''}
+            value={data.riskScore || 'Not calculated'}
+            subtitle={data.riskLevel || ''}
             color="red"
           />
           <StatCard
             icon={<Clock className="w-6 h-6" />}
             title="Effort Score"
-            value={data.effort_score || 'Not calculated'}
-            subtitle={data.effort_calculated_at ? formatDate(data.effort_calculated_at) : ''}
+            value={data.effortScore || 'Not calculated'}
+            subtitle={data.effortCalculatedAt ? formatDate(data.effortCalculatedAt) : ''}
             color="orange"
           />
           <StatCard
             icon={<CheckCircle2 className="w-6 h-6" />}
             title="Benefit Score"
-            value={data.benefit_score || 'Not calculated'}
-            subtitle={data.benefit_calculated_at ? formatDate(data.benefit_calculated_at) : ''}
+            value={data.benefitScore || 'Not calculated'}
+            subtitle={data.benefitCalculatedAt ? formatDate(data.benefitCalculatedAt) : ''}
             color="green"
           />
         </div>
@@ -126,7 +127,7 @@ export default function ChangeRequestDebug() {
           {/* Basic Information */}
           <Section title="Basic Information" icon={<Database className="w-5 h-5" />}>
             <InfoGrid>
-              <InfoItem label="Request Number" value={data.request_number} />
+              <InfoItem label="Request Number" value={data.requestNumber} />
               <InfoItem label="Title" value={wizardData.changeTitle} />
               <InfoItem label="Description" value={wizardData.briefDescription} />
               <InfoItem label="Proposed Date" value={wizardData.proposedDate ? formatDate(wizardData.proposedDate) : 'N/A'} />
@@ -138,10 +139,10 @@ export default function ChangeRequestDebug() {
           {/* Requester Information */}
           <Section title="Requester Information" icon={<Users className="w-5 h-5" />}>
             <InfoGrid>
-              <InfoItem label="Name" value={`${data.requester_first_name || ''} ${data.requester_last_name || ''}`.trim() || 'N/A'} />
-              <InfoItem label="Email" value={data.requester_email} />
-              <InfoItem label="Department" value={data.requester_department} />
-              <InfoItem label="Username" value={data.requester_username} />
+              <InfoItem label="Name" value={`${data.requester?.firstName || ''} ${data.requester?.lastName || ''}`.trim() || 'N/A'} />
+              <InfoItem label="Email" value={data.requester?.email} />
+              <InfoItem label="Department" value={data.requester?.department} />
+              <InfoItem label="Username" value={data.requester?.name} />
             </InfoGrid>
           </Section>
 
@@ -226,7 +227,7 @@ export default function ChangeRequestDebug() {
           </Section>
 
           {/* Effort Factors */}
-          {data.effort_factors && Object.keys(effortFactors).length > 0 && (
+          {data.effortFactors && Object.keys(effortFactors).length > 0 && (
             <Section title="Effort Factors (Calculated)" icon={<Clock className="w-5 h-5" />} fullWidth>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {effortFactors.impactScope && <FactorBadge label="Impact Scope" value={effortFactors.impactScope} />}
@@ -242,7 +243,7 @@ export default function ChangeRequestDebug() {
           )}
 
           {/* Benefit Factors */}
-          {data.benefit_factors && Object.keys(benefitFactors).length > 0 && (
+          {data.benefitFactors && Object.keys(benefitFactors).length > 0 && (
             <Section title="Benefit Factors (Calculated)" icon={<CheckCircle2 className="w-5 h-5" />} fullWidth>
               <div className="space-y-3">
                 {benefitFactors.revenueImprovement && (
@@ -277,13 +278,13 @@ export default function ChangeRequestDebug() {
           {/* Timestamps */}
           <Section title="Timestamps" icon={<Calendar className="w-5 h-5" />} fullWidth>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <InfoItem label="Created" value={formatDate(data.created_at)} />
-              <InfoItem label="Updated" value={formatDate(data.updated_at)} />
-              <InfoItem label="Submitted" value={formatDate(data.submitted_at)} />
-              <InfoItem label="Scheduled Start" value={formatDate(data.scheduled_start)} />
-              <InfoItem label="Scheduled End" value={formatDate(data.scheduled_end)} />
-              <InfoItem label="Actual Start" value={formatDate(data.actual_start)} />
-              <InfoItem label="Actual End" value={formatDate(data.actual_end)} />
+              <InfoItem label="Created" value={formatDate(data.createdAt)} />
+              <InfoItem label="Updated" value={formatDate(data.updatedAt)} />
+              <InfoItem label="Submitted" value={formatDate(data.submittedAt)} />
+              <InfoItem label="Scheduled Start" value={formatDate(data.scheduledStart)} />
+              <InfoItem label="Scheduled End" value={formatDate(data.scheduledEnd)} />
+              <InfoItem label="Actual Start" value={formatDate(data.actualStart)} />
+              <InfoItem label="Actual End" value={formatDate(data.actualEnd)} />
             </div>
           </Section>
         </div>

@@ -530,3 +530,84 @@ export const rejectChange = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+// @desc    Update benefit score and factors for a change request
+// @route   PUT /api/changes/:id/benefit-score
+// @access  Private
+export const updateBenefitScore = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Not authorized',
+        },
+      });
+    }
+
+    const { benefitScore, benefitFactors } = req.body;
+
+    if (typeof benefitScore !== 'number' || !benefitFactors) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_INPUT',
+          message: 'benefitScore (number) and benefitFactors (object) are required',
+        },
+      });
+    }
+
+    const change = await ChangeRequest.findById(parseInt(req.params.id));
+
+    if (!change) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Change request not found',
+        },
+      });
+    }
+
+    const db = (await import('../config/database.js')).getDatabase();
+
+    // Update benefit score and factors
+    await db.execute(
+      `UPDATE change_requests
+       SET benefit_score = ?,
+           benefit_factors = ?,
+           benefit_calculated_at = NOW(),
+           updated_at = NOW()
+       WHERE id = ?`,
+      [benefitScore, JSON.stringify(benefitFactors), change.id]
+    );
+
+    // Fetch updated change
+    const updatedChange = await ChangeRequest.findById(change.id);
+
+    if (!updatedChange) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Change request not found after update',
+        },
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: ChangeRequest.formatChange(updatedChange),
+    });
+  } catch (error) {
+    console.error('updateBenefitScore error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: error instanceof Error ? error.message : 'Server error',
+      },
+    });
+  }
+};

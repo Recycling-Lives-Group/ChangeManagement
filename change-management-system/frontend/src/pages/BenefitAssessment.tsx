@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 import {
   Zap,
   TrendingUp,
@@ -10,9 +12,13 @@ import {
   Info,
   BarChart3,
   ArrowUp,
-  ArrowDown,
+  Save,
 } from 'lucide-react';
 import { useChangesStore } from '../store/changesStore';
+import { extractBenefitFactors } from '../lib/benefitCalculator';
+import type { BenefitFactors, PriorityWeights } from '../lib/benefitCalculator';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface ChangeRequest {
   id: string;
@@ -22,25 +28,13 @@ interface ChangeRequest {
   requester: string;
   submittedDate: Date;
   targetDate: Date;
-  factors: PriorityFactors;
-  priorityScore?: number;
+  benefitScore?: number;
+  benefitFactors?: BenefitFactors;
   priorityRank?: number;
+  wizardData?: any;
 }
 
 interface PriorityFactors {
-  revenueImprovement: number; // 1-10
-  costSavings: number; // 1-10
-  customerImpact: number; // 1-10
-  processImprovement: number; // 1-10
-  internalQoL: number; // 1-10
-  urgency: number; // 1-10
-  impactScope: number; // 1-10
-  riskLevel: number; // 1-10
-  resourceRequirement: number; // 1-10 (inverse - lower is better)
-  strategicAlignment: number; // 1-10
-}
-
-interface PriorityWeights {
   revenueImprovement: number;
   costSavings: number;
   customerImpact: number;
@@ -70,6 +64,8 @@ export const BenefitAssessment: React.FC = () => {
   });
   const [showWeightConfig, setShowWeightConfig] = useState(false);
   const [sortedChanges, setSortedChanges] = useState<ChangeRequest[]>([]);
+  const [hasCalculated, setHasCalculated] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Fetch changes on mount
   useEffect(() => {
@@ -83,20 +79,6 @@ export const BenefitAssessment: React.FC = () => {
       .map(change => {
         const wizardData = change.wizardData || {};
 
-        // Extract factor values from wizard data
-        const factors: PriorityFactors = {
-          revenueImprovement: wizardData.changeReasons?.revenueImprovement ? 8 : 3,
-          costSavings: wizardData.changeReasons?.costReduction ? 8 : 3,
-          customerImpact: wizardData.changeReasons?.customerImpact ? 8 : 3,
-          processImprovement: wizardData.changeReasons?.processImprovement ? 7 : 3,
-          internalQoL: wizardData.changeReasons?.internalQoL ? 7 : 3,
-          urgency: wizardData.urgencyLevel === 'high' ? 9 : wizardData.urgencyLevel === 'medium' ? 6 : 3,
-          impactScope: Math.min(10, Math.ceil((Number(wizardData.impactedUsers) || 0) / 100)),
-          riskLevel: change.riskScore ? Math.ceil(change.riskScore / 10) : 5,
-          resourceRequirement: Math.min(10, Math.ceil((Number(wizardData.estimatedEffortHours) || 0) / 40)),
-          strategicAlignment: wizardData.changeReasons?.revenueImprovement || wizardData.changeReasons?.costReduction ? 8 : 5,
-        };
-
         return {
           id: change.requestNumber || change.id,
           title: change.title,
@@ -105,7 +87,7 @@ export const BenefitAssessment: React.FC = () => {
           requester: change.requester?.name || 'Unknown',
           submittedDate: change.submittedAt ? new Date(change.submittedAt) : new Date(),
           targetDate: wizardData.proposedDate ? new Date(wizardData.proposedDate) : new Date(),
-          factors,
+          wizardData,
         };
       });
 
@@ -115,35 +97,24 @@ export const BenefitAssessment: React.FC = () => {
   const calculatePriorities = () => {
     if (changes.length === 0) {
       setSortedChanges([]);
+      setHasCalculated(false);
       return;
     }
+
     const changesWithScores = changes.map((change) => {
-      let totalScore = 0;
-      let totalWeight = 0;
+      // Use extractBenefitFactors to properly extract detailed benefit factors from wizardData
+      const { factors, score } = extractBenefitFactors(change.wizardData || {}, weights);
 
-      Object.keys(change.factors).forEach((key) => {
-        const factorKey = key as keyof PriorityFactors;
-        let factorValue = change.factors[factorKey];
-
-        // Inverse scoring for resource requirement (lower is better)
-        if (factorKey === 'resourceRequirement') {
-          factorValue = 11 - factorValue;
-        }
-
-        totalScore += factorValue * weights[factorKey];
-        totalWeight += weights[factorKey];
-      });
-
-      const normalizedScore = (totalScore / totalWeight) * 10; // Scale to 0-100
       return {
         ...change,
-        priorityScore: Math.round(normalizedScore * 10) / 10,
+        benefitScore: score,
+        benefitFactors: factors,
       };
     });
 
     // Sort by score descending
     const sorted = changesWithScores.sort(
-      (a, b) => (b.priorityScore || 0) - (a.priorityScore || 0)
+      (a, b) => (b.benefitScore || 0) - (a.benefitScore || 0)
     );
 
     // Add rank
@@ -153,6 +124,7 @@ export const BenefitAssessment: React.FC = () => {
     }));
 
     setSortedChanges(ranked);
+    setHasCalculated(true);
   };
 
   useEffect(() => {
@@ -178,6 +150,67 @@ export const BenefitAssessment: React.FC = () => {
     });
   };
 
+  const saveToDatabase = async () => {
+    if (!hasCalculated || sortedChanges.length === 0) {
+      toast.error('Please calculate scores first');
+      return;
+    }
+
+    setIsSaving(true);
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      toast.error('Authentication token not found');
+      setIsSaving(false);
+      return;
+    }
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      // Loop through all sorted changes and save each one's benefit score and factors
+      for (const change of sortedChanges) {
+        try {
+          await axios.put(
+            `${API_URL}/changes/${change.id}/benefit-score`,
+            {
+              benefitScore: change.benefitScore,
+              benefitFactors: change.benefitFactors,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to save benefit score for change ${change.id}:`, error);
+          errorCount++;
+        }
+      }
+
+      // Show result toast
+      if (errorCount === 0) {
+        toast.success(`Successfully saved benefit scores for ${successCount} change${successCount !== 1 ? 's' : ''}`);
+      } else if (successCount > 0) {
+        toast.success(`Saved ${successCount} scores, ${errorCount} failed`);
+      } else {
+        toast.error('Failed to save benefit scores');
+      }
+
+      // Refetch changes to get updated data
+      await fetchChanges();
+    } catch (error) {
+      console.error('Error saving benefit scores:', error);
+      toast.error('Failed to save benefit scores');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const getScoreColor = (score: number) => {
     if (score >= 8) return 'text-red-600 dark:text-red-400';
     if (score >= 6) return 'text-orange-600 dark:text-orange-400';
@@ -196,7 +229,7 @@ export const BenefitAssessment: React.FC = () => {
     if (rank === 1) {
       return (
         <span className="px-3 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full text-sm font-bold">
-          🏆 #1
+          #1
         </span>
       );
     }
@@ -207,10 +240,7 @@ export const BenefitAssessment: React.FC = () => {
     );
   };
 
-  const factorLabels: Record<
-    keyof PriorityFactors,
-    { label: string; icon: any; help: string }
-  > = {
+  const factorLabels: Record<string, { label: string; icon: any; help: string }> = {
     revenueImprovement: {
       label: 'Revenue Improvement',
       icon: PoundSterling,
@@ -263,6 +293,24 @@ export const BenefitAssessment: React.FC = () => {
     },
   };
 
+  const renderFactorValue = (factor: any) => {
+    if (!factor) return 'N/A';
+
+    if (typeof factor === 'object') {
+      if ('weightedScore' in factor) {
+        return factor.weightedScore?.toFixed(1) || 'N/A';
+      }
+      if ('score' in factor) {
+        return factor.score?.toFixed(1) || 'N/A';
+      }
+      if ('combinedScore' in factor) {
+        return factor.combinedScore?.toFixed(1) || 'N/A';
+      }
+    }
+
+    return typeof factor === 'number' ? factor.toFixed(1) : 'N/A';
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -290,6 +338,16 @@ export const BenefitAssessment: React.FC = () => {
             <BarChart3 className="w-4 h-4" />
             Recalculate
           </button>
+          {hasCalculated && (
+            <button
+              onClick={saveToDatabase}
+              disabled={isSaving}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? 'Saving...' : 'Save to Database'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -359,96 +417,107 @@ export const BenefitAssessment: React.FC = () => {
             Prioritized Change Queue
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Changes ranked by calculated priority score
+            Changes ranked by calculated benefit score
           </p>
         </div>
 
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {sortedChanges.map((change, index) => (
-            <div
-              key={change.id}
-              className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-            >
-              <div className="flex items-start gap-4">
-                {/* Rank Badge */}
-                <div className="flex-shrink-0">
-                  {getRankBadge(change.priorityRank || index + 1)}
-                </div>
-
-                {/* Change Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {change.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {change.id} • {change.requester}
-                      </p>
-                    </div>
-                    <div
-                      className={`px-4 py-2 rounded-lg ${getScoreBgColor(change.priorityScore || 0)}`}
-                    >
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        Priority Score
-                      </p>
-                      <p
-                        className={`text-2xl font-bold ${getScoreColor(change.priorityScore || 0)}`}
-                      >
-                        {change.priorityScore?.toFixed(1)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Factor Breakdown */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                    {Object.entries(change.factors).map(([key, value]) => {
-                      const { label, icon: Icon } =
-                        factorLabels[key as keyof PriorityFactors];
-                      return (
-                        <div
-                          key={key}
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          <Icon className="w-4 h-4 text-gray-500" />
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {label}:
-                          </span>
-                          <span className="font-semibold text-gray-900 dark:text-white">
-                            {value}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Metadata */}
-                  <div className="flex items-center gap-4 mt-4 text-sm text-gray-600 dark:text-gray-400">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded capitalize">
-                      {change.type}
-                    </span>
-                    <span className="px-2 py-1 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded capitalize">
-                      {change.riskLevel} Risk
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      Target: {change.targetDate.toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Rank Change Indicator */}
-                {index === 0 && (
-                  <div className="flex-shrink-0">
-                    <div className="px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-lg flex items-center gap-1 text-xs font-semibold">
-                      <ArrowUp className="w-3 h-3" />
-                      Top Priority
-                    </div>
-                  </div>
-                )}
-              </div>
+          {sortedChanges.length === 0 ? (
+            <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+              No changes available for assessment
             </div>
-          ))}
+          ) : (
+            sortedChanges.map((change, index) => (
+              <div
+                key={change.id}
+                className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+              >
+                <div className="flex items-start gap-4">
+                  {/* Rank Badge */}
+                  <div className="flex-shrink-0">
+                    {getRankBadge(change.priorityRank || index + 1)}
+                  </div>
+
+                  {/* Change Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {change.title}
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {change.id} • {change.requester}
+                        </p>
+                      </div>
+                      <div
+                        className={`px-4 py-2 rounded-lg ${getScoreBgColor(change.benefitScore || 0)}`}
+                      >
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Benefit Score
+                        </p>
+                        <p
+                          className={`text-2xl font-bold ${getScoreColor(change.benefitScore || 0)}`}
+                        >
+                          {change.benefitScore?.toFixed(1) || '0.0'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Factor Breakdown */}
+                    {change.benefitFactors && (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+                        {Object.entries(change.benefitFactors).map(([key, value]) => {
+                          if (!value) return null;
+                          const { label, icon: Icon } = factorLabels[key] || {
+                            label: key,
+                            icon: Info
+                          };
+                          return (
+                            <div
+                              key={key}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <Icon className="w-4 h-4 text-gray-500" />
+                              <span className="text-gray-600 dark:text-gray-400">
+                                {label}:
+                              </span>
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                {renderFactorValue(value)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Metadata */}
+                    <div className="flex items-center gap-4 mt-4 text-sm text-gray-600 dark:text-gray-400">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded capitalize">
+                        {change.type}
+                      </span>
+                      <span className="px-2 py-1 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded capitalize">
+                        {change.riskLevel} Risk
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        Target: {change.targetDate.toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Top Priority Indicator */}
+                  {index === 0 && (
+                    <div className="flex-shrink-0">
+                      <div className="px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-lg flex items-center gap-1 text-xs font-semibold">
+                        <ArrowUp className="w-3 h-3" />
+                        Top Priority
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -476,7 +545,7 @@ export const BenefitAssessment: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">High Priority</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {sortedChanges.filter((c) => (c.priorityScore || 0) >= 8).length}
+                {sortedChanges.filter((c) => (c.benefitScore || 0) >= 8).length}
               </p>
             </div>
           </div>
@@ -492,7 +561,7 @@ export const BenefitAssessment: React.FC = () => {
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {
                   sortedChanges.filter(
-                    (c) => (c.priorityScore || 0) >= 6 && (c.priorityScore || 0) < 8
+                    (c) => (c.benefitScore || 0) >= 6 && (c.benefitScore || 0) < 8
                   ).length
                 }
               </p>
@@ -508,10 +577,12 @@ export const BenefitAssessment: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Avg Score</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {(
-                  sortedChanges.reduce((acc, c) => acc + (c.priorityScore || 0), 0) /
-                  sortedChanges.length
-                ).toFixed(1)}
+                {sortedChanges.length > 0
+                  ? (
+                      sortedChanges.reduce((acc, c) => acc + (c.benefitScore || 0), 0) /
+                      sortedChanges.length
+                    ).toFixed(1)
+                  : '0.0'}
               </p>
             </div>
           </div>

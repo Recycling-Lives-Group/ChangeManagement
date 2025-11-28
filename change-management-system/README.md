@@ -62,7 +62,7 @@ A comprehensive full-stack Change Management application built with React, TypeS
 ### Backend
 - **Node.js** with TypeScript
 - **Express** - Web framework
-- **MariaDB + Sequelize** - Database
+- **MariaDB + mysql2** - Database (fully migrated from MongoDB)
 - **JWT** - Authentication
 - **bcryptjs** - Password hashing
 - **Socket.io** - Real-time communication

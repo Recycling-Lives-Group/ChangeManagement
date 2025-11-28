@@ -1,14 +1,12 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { UserSQL } from '../models/UserSQL.js';
+import { User } from '../models/User.js';
 import { config } from '../config/index.js';
 import type { AuthRequest } from '../middleware/auth.js';
 
 // Generate JWT Token
 const generateToken = (id: number): string => {
-  return jwt.sign({ id: id.toString() }, config.jwtSecret, {
-    expiresIn: config.jwtExpire,
-  });
+  return jwt.sign({ id: id.toString() }, config.jwtSecret);
 };
 
 // @desc    Register user
@@ -19,7 +17,7 @@ export const register = async (req: Request, res: Response) => {
     const { email, password, username, first_name, last_name, department, role } = req.body;
 
     // Check if user exists
-    const userExists = await UserSQL.findByEmail(email);
+    const userExists = await User.findByEmail(email);
     if (userExists) {
       return res.status(400).json({
         success: false,
@@ -31,7 +29,7 @@ export const register = async (req: Request, res: Response) => {
     }
 
     // Create user
-    const user = await UserSQL.create({
+    const user = await User.create({
       email,
       username: username || email.split('@')[0],
       password,
@@ -48,7 +46,7 @@ export const register = async (req: Request, res: Response) => {
       success: true,
       data: {
         token,
-        user: UserSQL.formatUser(user),
+        user: User.formatUser(user),
       },
     });
   } catch (error) {
@@ -81,7 +79,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Check for user (need password hash)
-    const user = await UserSQL.findByEmail(email);
+    const user = await User.findByEmail(email);
     if (!user || !user.password_hash) {
       return res.status(401).json({
         success: false,
@@ -93,7 +91,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Check if password matches
-    const isMatch = await UserSQL.comparePassword(password, user.password_hash);
+    const isMatch = await User.comparePassword(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -111,7 +109,7 @@ export const login = async (req: Request, res: Response) => {
       success: true,
       data: {
         token,
-        user: UserSQL.formatUser(user),
+        user: User.formatUser(user),
       },
     });
   } catch (error) {
@@ -140,7 +138,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const user = await UserSQL.findById(parseInt(req.user.id));
+    const user = await User.findById(parseInt(req.user.id));
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -153,7 +151,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({
       success: true,
-      data: UserSQL.formatUser(user),
+      data: User.formatUser(user),
     });
   } catch (error) {
     res.status(500).json({

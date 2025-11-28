@@ -13,7 +13,7 @@ export interface BenefitScoringConfigData {
   updated_at: Date;
 }
 
-export class BenefitScoringConfigSQL {
+export class BenefitScoringConfig {
   static async findAll(): Promise<BenefitScoringConfigData[]> {
     const db = getDatabase();
     const [rows] = await db.execute<RowDataPacket[]>(

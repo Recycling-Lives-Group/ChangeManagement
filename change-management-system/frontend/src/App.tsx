@@ -19,6 +19,7 @@ import VotingSystem from './pages/VotingSystem';
 import BenefitAssessment from './pages/BenefitAssessment';
 import DependencyVisualization from './pages/DependencyVisualization';
 import BenefitScoringConfig from './pages/BenefitScoringConfig';
+import ChangeRequestDebug from './pages/ChangeRequestDebug';
 
 function App() {
   const { loadUser, isAuthenticated, isLoading } = useAuthStore();
@@ -209,6 +210,18 @@ function App() {
                 <Layout>
                   <BenefitScoringConfig />
                 </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          {/* Debug Route - Development Only */}
+          <Route
+            path="/debug/changes/:id"
+            element={
+              isAuthenticated ? (
+                <ChangeRequestDebug />
               ) : (
                 <Navigate to="/login" />
               )

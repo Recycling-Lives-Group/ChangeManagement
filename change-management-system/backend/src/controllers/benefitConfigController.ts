@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
-import { BenefitScoringConfigSQL } from '../models/BenefitScoringConfigSQL.js';
+import { BenefitScoringConfig } from '../models/BenefitScoringConfig.js';
 
 // Get all benefit scoring configs
 export const getAllBenefitConfigs = async (req: Request, res: Response) => {
   try {
-    const configs = await BenefitScoringConfigSQL.findAll();
-    const formattedConfigs = configs.map(config => BenefitScoringConfigSQL.formatConfig(config));
+    const configs = await BenefitScoringConfig.findAll();
+    const formattedConfigs = configs.map(config => BenefitScoringConfig.formatConfig(config));
 
     res.status(200).json({
       success: true,
@@ -27,7 +27,7 @@ export const getAllBenefitConfigs = async (req: Request, res: Response) => {
 export const getBenefitConfigById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const config = await BenefitScoringConfigSQL.findById(parseInt(id));
+    const config = await BenefitScoringConfig.findById(parseInt(id));
 
     if (!config) {
       return res.status(404).json({
@@ -41,7 +41,7 @@ export const getBenefitConfigById = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      data: BenefitScoringConfigSQL.formatConfig(config),
+      data: BenefitScoringConfig.formatConfig(config),
     });
   } catch (error: any) {
     console.error('Error fetching benefit config:', error);
@@ -59,7 +59,7 @@ export const getBenefitConfigById = async (req: Request, res: Response) => {
 export const getBenefitConfigByType = async (req: Request, res: Response) => {
   try {
     const { type } = req.params;
-    const config = await BenefitScoringConfigSQL.findByType(type);
+    const config = await BenefitScoringConfig.findByType(type);
 
     if (!config) {
       return res.status(404).json({
@@ -73,7 +73,7 @@ export const getBenefitConfigByType = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      data: BenefitScoringConfigSQL.formatConfig(config),
+      data: BenefitScoringConfig.formatConfig(config),
     });
   } catch (error: any) {
     console.error('Error fetching benefit config by type:', error);
@@ -103,7 +103,7 @@ export const createBenefitConfig = async (req: Request, res: Response) => {
       });
     }
 
-    const config = await BenefitScoringConfigSQL.create({
+    const config = await BenefitScoringConfig.create({
       benefit_type: benefitType,
       display_name: displayName,
       value_for_100_points: valueFor100Points,
@@ -114,7 +114,7 @@ export const createBenefitConfig = async (req: Request, res: Response) => {
 
     res.status(201).json({
       success: true,
-      data: BenefitScoringConfigSQL.formatConfig(config),
+      data: BenefitScoringConfig.formatConfig(config),
     });
   } catch (error: any) {
     console.error('Error creating benefit config:', error);
@@ -142,7 +142,7 @@ export const updateBenefitConfig = async (req: Request, res: Response) => {
     if (description !== undefined) updateData.description = description;
     if (isActive !== undefined) updateData.is_active = isActive;
 
-    const config = await BenefitScoringConfigSQL.update(parseInt(id), updateData);
+    const config = await BenefitScoringConfig.update(parseInt(id), updateData);
 
     if (!config) {
       return res.status(404).json({
@@ -156,7 +156,7 @@ export const updateBenefitConfig = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      data: BenefitScoringConfigSQL.formatConfig(config),
+      data: BenefitScoringConfig.formatConfig(config),
     });
   } catch (error: any) {
     console.error('Error updating benefit config:', error);
@@ -174,7 +174,7 @@ export const updateBenefitConfig = async (req: Request, res: Response) => {
 export const deleteBenefitConfig = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const success = await BenefitScoringConfigSQL.delete(parseInt(id));
+    const success = await BenefitScoringConfig.delete(parseInt(id));
 
     if (!success) {
       return res.status(404).json({

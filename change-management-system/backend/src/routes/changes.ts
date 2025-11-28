@@ -7,7 +7,7 @@ import {
   deleteChange,
   approveChange,
   rejectChange,
-} from '../controllers/changeControllerSQL.js';
+} from '../controllers/changeController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();

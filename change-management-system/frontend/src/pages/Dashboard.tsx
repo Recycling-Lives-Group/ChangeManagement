@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useChangesStore } from '../store/changesStore';
 import { useAuthStore } from '../store/authStore';
-import { Plus, AlertCircle, CheckCircle, Clock, XCircle, FileText, TrendingUp, Activity, Award } from 'lucide-react';
+import { Plus, AlertCircle, CheckCircle, Clock, XCircle, FileText, TrendingUp, Activity, Award, Bug } from 'lucide-react';
 import { format } from 'date-fns';
 import type { ChangeStatus } from '@cm/types';
 
@@ -253,12 +253,21 @@ export default function Dashboard() {
                             {change.submittedAt || change.createdAt ? format(new Date(change.submittedAt || change.createdAt), 'MMM d, yyyy') : 'N/A'}
                           </td>
                           <td className="py-4">
-                            <Link
-                              to={`/changes/${change.id}`}
-                              className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
-                            >
-                              View Details
-                            </Link>
+                            <div className="flex gap-2">
+                              <Link
+                                to={`/changes/${change.id}`}
+                                className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+                              >
+                                View Details
+                              </Link>
+                              <Link
+                                to={`/debug/changes/${change.id}`}
+                                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-yellow-100 text-yellow-800 text-sm font-semibold hover:bg-yellow-200 transition-all border border-yellow-300"
+                                title="Debug View (Dev Only)"
+                              >
+                                <Bug size={16} />
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       );

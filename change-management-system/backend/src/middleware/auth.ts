@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { UserSQL, UserData } from '../models/UserSQL.js';
+import { User, UserData } from '../models/User.js';
 import { config } from '../config/index.js';
 
 export interface AuthRequest extends Request {
@@ -26,7 +26,7 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
 
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as { id: string };
-    const user = await UserSQL.findById(parseInt(decoded.id));
+    const user = await User.findById(parseInt(decoded.id));
 
     if (!user) {
       return res.status(401).json({
@@ -63,7 +63,7 @@ export const authorize = (...roles: string[]) => {
       });
     }
 
-    const user = await UserSQL.findById(parseInt(req.user.id));
+    const user = await User.findById(parseInt(req.user.id));
     if (!user || !roles.includes(user.role)) {
       return res.status(403).json({
         success: false,

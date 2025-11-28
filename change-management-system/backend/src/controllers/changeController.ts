@@ -1,46 +1,58 @@
 import { Response } from 'express';
 import { ChangeRequest } from '../models/ChangeRequest.js';
+import { User } from '../models/User.js';
 import type { AuthRequest } from '../middleware/auth.js';
-import type { FilterParams, PaginationParams } from '@cm/types';
+import { autoCalculateRisk } from '../utils/riskCalculator.js';
 
 // @desc    Get all change requests
 // @route   GET /api/changes
 // @access  Private
 export const getChanges = async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Not authorized',
+        },
+      });
+    }
+
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-    const skip = (page - 1) * pageSize;
 
-    // Build filter query
-    const filter: any = {};
+    // Get user to check role
+    const user = await User.findById(parseInt(req.user.id));
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User not found',
+        },
+      });
+    }
+
+    // Build filter options
+    const options: any = { page, pageSize };
+
+    // Filter by status if provided
     if (req.query.status) {
-      filter.status = { $in: (req.query.status as string).split(',') };
-    }
-    if (req.query.changeType) {
-      filter.changeType = { $in: (req.query.changeType as string).split(',') };
-    }
-    if (req.query.riskLevel) {
-      filter.riskLevel = { $in: (req.query.riskLevel as string).split(',') };
-    }
-    if (req.query.requester) {
-      filter['requester.email'] = req.query.requester;
+      options.status = (req.query.status as string).split(',');
     }
 
     // If user is not admin/coordinator, only show their requests
-    if (req.user && !['Admin', 'Coordinator', 'CAB_Member'].includes(req.user.role)) {
-      filter['requester.email'] = req.user.email;
+    const adminRoles = ['admin', 'manager', 'cab_member', 'Admin', 'Coordinator', 'CAB_Member'];
+    if (!adminRoles.includes(user.role)) {
+      options.requesterId = user.id;
     }
 
-    const total = await ChangeRequest.countDocuments(filter);
-    const changes = await ChangeRequest.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(pageSize);
+    const { changes, total } = await ChangeRequest.findAll(options);
 
     res.status(200).json({
       success: true,
-      data: changes,
+      data: changes.map(c => ChangeRequest.formatChange(c)),
       meta: {
         page,
         pageSize,
@@ -48,6 +60,7 @@ export const getChanges = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error) {
+    console.error('getChanges error:', error);
     res.status(500).json({
       success: false,
       error: {
@@ -63,7 +76,17 @@ export const getChanges = async (req: AuthRequest, res: Response) => {
 // @access  Private
 export const getChange = async (req: AuthRequest, res: Response) => {
   try {
-    const change = await ChangeRequest.findById(req.params.id);
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Not authorized',
+        },
+      });
+    }
+
+    const change = await ChangeRequest.findById(parseInt(req.params.id));
 
     if (!change) {
       return res.status(404).json({
@@ -75,12 +98,21 @@ export const getChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Get user to check permissions
+    const user = await User.findById(parseInt(req.user.id));
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User not found',
+        },
+      });
+    }
+
     // Check if user has permission to view this change
-    if (
-      req.user &&
-      !['Admin', 'Coordinator', 'CAB_Member'].includes(req.user.role) &&
-      change.requester.email !== req.user.email
-    ) {
+    const adminRoles = ['admin', 'manager', 'cab_member', 'Admin', 'Coordinator', 'CAB_Member'];
+    if (!adminRoles.includes(user.role) && change.requester_id !== user.id) {
       return res.status(403).json({
         success: false,
         error: {
@@ -92,9 +124,10 @@ export const getChange = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({
       success: true,
-      data: change,
+      data: ChangeRequest.formatChange(change),
     });
   } catch (error) {
+    console.error('getChange error:', error);
     res.status(500).json({
       success: false,
       error: {
@@ -120,25 +153,47 @@ export const createChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Set requester info from authenticated user
+    const user = await User.findById(parseInt(req.user.id));
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User not found',
+        },
+      });
+    }
+
+    // Create change request
+    // Extract title from wizard data if not directly provided
+    const wizardData = req.body.wizardData || req.body;
+    const title = req.body.title || wizardData.changeTitle || 'Untitled Change Request';
+    const description = req.body.description || wizardData.briefDescription || null;
+
+    // Auto-calculate risk score from wizard data
+    const riskAssessment = autoCalculateRisk(wizardData);
+
     const changeData = {
-      ...req.body,
-      requester: {
-        name: req.user.name,
-        department: req.user.department,
-        email: req.user.email,
-        phone: req.user.phone,
-      },
-      status: 'New',
+      title: title,
+      description: description,
+      requester_id: user.id,
+      status: 'submitted',
+      priority: req.body.priority || 'medium',
+      wizard_data: wizardData,
+      scheduling_data: req.body.schedulingData || null,
+      risk_score: riskAssessment.score,
+      risk_level: riskAssessment.level,
     };
 
+    console.log('Creating change with data:', JSON.stringify(changeData, null, 2));
     const change = await ChangeRequest.create(changeData);
 
     res.status(201).json({
       success: true,
-      data: change,
+      data: ChangeRequest.formatChange(change),
     });
   } catch (error) {
+    console.error('createChange error:', error);
     res.status(500).json({
       success: false,
       error: {
@@ -154,7 +209,17 @@ export const createChange = async (req: AuthRequest, res: Response) => {
 // @access  Private
 export const updateChange = async (req: AuthRequest, res: Response) => {
   try {
-    let change = await ChangeRequest.findById(req.params.id);
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Not authorized',
+        },
+      });
+    }
+
+    const change = await ChangeRequest.findById(parseInt(req.params.id));
 
     if (!change) {
       return res.status(404).json({
@@ -166,12 +231,20 @@ export const updateChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const user = await User.findById(parseInt(req.user.id));
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User not found',
+        },
+      });
+    }
+
     // Check if user has permission to update
-    if (
-      req.user &&
-      !['Admin', 'Coordinator'].includes(req.user.role) &&
-      change.requester.email !== req.user.email
-    ) {
+    const adminRoles = ['admin', 'manager', 'Admin', 'Coordinator'];
+    if (!adminRoles.includes(user.role) && change.requester_id !== user.id) {
       return res.status(403).json({
         success: false,
         error: {
@@ -181,16 +254,48 @@ export const updateChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    change = await ChangeRequest.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
+    // Extract title from wizard data if not directly provided
+    const wizardData = req.body.wizardData || req.body;
+    const title = req.body.title || wizardData.changeTitle || change.title;
+    const description = req.body.description || wizardData.briefDescription || change.description;
+
+    console.log('Updating change with data:', req.body);
+
+    // Convert ISO datetime to MySQL format (YYYY-MM-DD HH:MM:SS)
+    const toMySQLDateTime = (isoString: string | undefined): Date | null => {
+      if (!isoString) return null;
+      return new Date(isoString);
+    };
+
+    const updatedChange = await ChangeRequest.update(change.id, {
+      title: title,
+      description: description,
+      status: req.body.status,
+      priority: req.body.priority,
+      wizard_data: req.body.wizardData,
+      scheduling_data: req.body.schedulingData,
+      effort_score: req.body.effort_score,
+      benefit_score: req.body.benefit_score,
+      effort_calculated_at: toMySQLDateTime(req.body.effort_calculated_at),
+      benefit_calculated_at: toMySQLDateTime(req.body.benefit_calculated_at),
     });
+
+    if (!updatedChange) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Change request not found',
+        },
+      });
+    }
 
     res.status(200).json({
       success: true,
-      data: change,
+      data: ChangeRequest.formatChange(updatedChange),
     });
   } catch (error) {
+    console.error('updateChange error:', error);
     res.status(500).json({
       success: false,
       error: {
@@ -206,7 +311,17 @@ export const updateChange = async (req: AuthRequest, res: Response) => {
 // @access  Private
 export const deleteChange = async (req: AuthRequest, res: Response) => {
   try {
-    const change = await ChangeRequest.findById(req.params.id);
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Not authorized',
+        },
+      });
+    }
+
+    const change = await ChangeRequest.findById(parseInt(req.params.id));
 
     if (!change) {
       return res.status(404).json({
@@ -218,12 +333,20 @@ export const deleteChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const user = await User.findById(parseInt(req.user.id));
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User not found',
+        },
+      });
+    }
+
     // Check permissions
-    if (
-      req.user &&
-      !['Admin', 'Coordinator'].includes(req.user.role) &&
-      change.requester.email !== req.user.email
-    ) {
+    const adminRoles = ['admin', 'manager', 'Admin', 'Coordinator'];
+    if (!adminRoles.includes(user.role) && change.requester_id !== user.id) {
       return res.status(403).json({
         success: false,
         error: {
@@ -233,15 +356,15 @@ export const deleteChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Mark as cancelled instead of deleting
-    change.status = 'Cancelled';
-    await change.save();
+    // Mark as cancelled
+    await ChangeRequest.delete(change.id);
 
     res.status(200).json({
       success: true,
       data: {},
     });
   } catch (error) {
+    console.error('deleteChange error:', error);
     res.status(500).json({
       success: false,
       error: {
@@ -257,7 +380,18 @@ export const deleteChange = async (req: AuthRequest, res: Response) => {
 // @access  Private
 export const approveChange = async (req: AuthRequest, res: Response) => {
   try {
-    const change = await ChangeRequest.findById(req.params.id);
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Not authorized',
+        },
+      });
+    }
+
+    const { comments } = req.body;
+    const change = await ChangeRequest.findById(parseInt(req.params.id));
 
     if (!change) {
       return res.status(404).json({
@@ -269,46 +403,46 @@ export const approveChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!req.user) {
-      return res.status(401).json({
+    const db = (await import('../config/database.js')).getDatabase();
+
+    // Create CAB review record
+    await db.execute(
+      `INSERT INTO cab_reviews (change_request_id, reviewer_id, vote, comments, reviewed_at)
+       VALUES (?, ?, 'approved', ?, NOW())
+       ON DUPLICATE KEY UPDATE vote = 'approved', comments = ?, reviewed_at = NOW()`,
+      [change.id, req.user.id, comments || null, comments || null]
+    );
+
+    // Add comment if provided
+    if (comments) {
+      await db.execute(
+        `INSERT INTO change_comments (change_request_id, user_id, comment, is_internal)
+         VALUES (?, ?, ?, FALSE)`,
+        [change.id, req.user.id, comments]
+      );
+    }
+
+    // Update change status to approved
+    const updatedChange = await ChangeRequest.update(change.id, {
+      status: 'approved',
+    });
+
+    if (!updatedChange) {
+      return res.status(404).json({
         success: false,
         error: {
-          code: 'UNAUTHORIZED',
-          message: 'Not authorized',
+          code: 'NOT_FOUND',
+          message: 'Change request not found',
         },
       });
     }
 
-    // Add approval
-    const approval = {
-      id: new Date().getTime().toString(),
-      changeRequestId: change._id.toString(),
-      approver: {
-        id: req.user._id.toString(),
-        name: req.user.name,
-        email: req.user.email,
-      },
-      level: req.body.level || 'L1',
-      status: 'Approved',
-      comments: req.body.comments,
-      approvedAt: new Date(),
-      createdAt: new Date(),
-    };
-
-    change.approvals.push(approval);
-
-    // Update status based on approval level
-    if (change.status === 'New' || change.status === 'In Review') {
-      change.status = 'Approved';
-    }
-
-    await change.save();
-
     res.status(200).json({
       success: true,
-      data: change,
+      data: ChangeRequest.formatChange(updatedChange),
     });
   } catch (error) {
+    console.error('approveChange error:', error);
     res.status(500).json({
       success: false,
       error: {
@@ -324,7 +458,18 @@ export const approveChange = async (req: AuthRequest, res: Response) => {
 // @access  Private
 export const rejectChange = async (req: AuthRequest, res: Response) => {
   try {
-    const change = await ChangeRequest.findById(req.params.id);
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Not authorized',
+        },
+      });
+    }
+
+    const { comments } = req.body;
+    const change = await ChangeRequest.findById(parseInt(req.params.id));
 
     if (!change) {
       return res.status(404).json({
@@ -336,42 +481,46 @@ export const rejectChange = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!req.user) {
-      return res.status(401).json({
+    const db = (await import('../config/database.js')).getDatabase();
+
+    // Create CAB review record
+    await db.execute(
+      `INSERT INTO cab_reviews (change_request_id, reviewer_id, vote, comments, reviewed_at)
+       VALUES (?, ?, 'rejected', ?, NOW())
+       ON DUPLICATE KEY UPDATE vote = 'rejected', comments = ?, reviewed_at = NOW()`,
+      [change.id, req.user.id, comments || null, comments || null]
+    );
+
+    // Add comment if provided
+    if (comments) {
+      await db.execute(
+        `INSERT INTO change_comments (change_request_id, user_id, comment, is_internal)
+         VALUES (?, ?, ?, FALSE)`,
+        [change.id, req.user.id, comments]
+      );
+    }
+
+    // Update change status to rejected
+    const updatedChange = await ChangeRequest.update(change.id, {
+      status: 'rejected',
+    });
+
+    if (!updatedChange) {
+      return res.status(404).json({
         success: false,
         error: {
-          code: 'UNAUTHORIZED',
-          message: 'Not authorized',
+          code: 'NOT_FOUND',
+          message: 'Change request not found',
         },
       });
     }
 
-    // Add rejection
-    const approval = {
-      id: new Date().getTime().toString(),
-      changeRequestId: change._id.toString(),
-      approver: {
-        id: req.user._id.toString(),
-        name: req.user.name,
-        email: req.user.email,
-      },
-      level: req.body.level || 'L1',
-      status: 'Rejected',
-      comments: req.body.comments || 'No comments provided',
-      approvedAt: new Date(),
-      createdAt: new Date(),
-    };
-
-    change.approvals.push(approval);
-    change.status = 'Cancelled';
-
-    await change.save();
-
     res.status(200).json({
       success: true,
-      data: change,
+      data: ChangeRequest.formatChange(updatedChange),
     });
   } catch (error) {
+    console.error('rejectChange error:', error);
     res.status(500).json({
       success: false,
       error: {

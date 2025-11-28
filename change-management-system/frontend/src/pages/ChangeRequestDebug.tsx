@@ -164,21 +164,21 @@ export default function ChangeRequestDebug() {
           <StatCard
             icon={<TrendingUp className="w-6 h-6" />}
             label="Risk Score"
-            value={data.risk_score !== null ? data.risk_score.toFixed(2) : 'Not calculated'}
+            value={data.risk_score !== null && data.risk_score !== undefined ? data.risk_score.toFixed(2) : 'Not calculated'}
             sublabel={data.risk_level || ''}
             color="red"
           />
           <StatCard
             icon={<Clock className="w-6 h-6" />}
             label="Effort Score"
-            value={data.effort_score !== null ? data.effort_score.toFixed(2) : 'Not calculated'}
+            value={data.effort_score !== null && data.effort_score !== undefined ? data.effort_score.toFixed(2) : 'Not calculated'}
             sublabel={data.effort_calculated_at ? `Calc: ${new Date(data.effort_calculated_at).toLocaleDateString()}` : ''}
             color="orange"
           />
           <StatCard
             icon={<DollarSign className="w-6 h-6" />}
             label="Benefit Score"
-            value={data.benefit_score !== null ? data.benefit_score.toFixed(2) : 'Not calculated'}
+            value={data.benefit_score !== null && data.benefit_score !== undefined ? data.benefit_score.toFixed(2) : 'Not calculated'}
             sublabel={data.benefit_calculated_at ? `Calc: ${new Date(data.benefit_calculated_at).toLocaleDateString()}` : ''}
             color="green"
           />
@@ -231,7 +231,7 @@ export default function ChangeRequestDebug() {
         {/* Risk Assessment */}
         <Section title="Risk Assessment" color="red">
           <DataGrid>
-            <DataItem label="Risk Score" value={data.risk_score !== null ? data.risk_score.toFixed(2) : 'Not calculated'} />
+            <DataItem label="Risk Score" value={data.risk_score !== null && data.risk_score !== undefined ? data.risk_score.toFixed(2) : 'Not calculated'} />
             <DataItem label="Risk Level" value={data.risk_level || 'Not set'} />
             <DataItem label="Calculated At" value={formatDate(data.risk_calculated_at)} />
             <DataItem label="Calculated By (User ID)" value={data.risk_calculated_by || 'N/A'} />
@@ -241,7 +241,7 @@ export default function ChangeRequestDebug() {
         {/* Effort Assessment */}
         <Section title="Effort Assessment" color="orange">
           <DataGrid>
-            <DataItem label="Effort Score" value={data.effort_score !== null ? data.effort_score.toFixed(2) : 'Not calculated'} />
+            <DataItem label="Effort Score" value={data.effort_score !== null && data.effort_score !== undefined ? data.effort_score.toFixed(2) : 'Not calculated'} />
             <DataItem label="Calculated At" value={formatDate(data.effort_calculated_at)} />
           </DataGrid>
           {data.effort_factors && (
@@ -264,7 +264,7 @@ export default function ChangeRequestDebug() {
         {/* Benefit Assessment */}
         <Section title="Benefit Assessment" color="green">
           <DataGrid>
-            <DataItem label="Benefit Score" value={data.benefit_score !== null ? data.benefit_score.toFixed(2) : 'Not calculated'} />
+            <DataItem label="Benefit Score" value={data.benefit_score !== null && data.benefit_score !== undefined ? data.benefit_score.toFixed(2) : 'Not calculated'} />
             <DataItem label="Calculated At" value={formatDate(data.benefit_calculated_at)} />
           </DataGrid>
           {data.benefit_factors && (
@@ -287,10 +287,10 @@ export default function ChangeRequestDebug() {
               {data.benefit_factors.strategicAlignment && (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                   <h5 className="font-semibold text-purple-900 mb-2">Strategic Alignment</h5>
-                  <p className="text-sm text-gray-700 mb-2">{data.benefit_factors.strategicAlignment.explanation}</p>
+                  <p className="text-sm text-gray-700 mb-2">{data.benefit_factors.strategicAlignment.explanation || 'No explanation provided'}</p>
                   <div className="flex gap-4 text-sm">
-                    <span className="text-gray-600">Score: <strong>{data.benefit_factors.strategicAlignment.score}/10</strong></span>
-                    <span className="text-gray-600">Weighted: <strong>{data.benefit_factors.strategicAlignment.weightedScore.toFixed(2)}</strong></span>
+                    <span className="text-gray-600">Score: <strong>{data.benefit_factors.strategicAlignment.score ?? 'N/A'}/10</strong></span>
+                    <span className="text-gray-600">Weighted: <strong>{data.benefit_factors.strategicAlignment.weightedScore !== undefined ? data.benefit_factors.strategicAlignment.weightedScore.toFixed(2) : 'N/A'}</strong></span>
                   </div>
                 </div>
               )}
@@ -422,34 +422,36 @@ function FactorBadge({ label, value, inverse = false }: any) {
 }
 
 function BenefitDetail({ title, data, unit }: any) {
+  if (!data) return null;
+
   return (
     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
       <h5 className="font-semibold text-green-900 mb-2">{title}</h5>
-      <p className="text-sm text-gray-700 mb-3">{data.explanation}</p>
+      <p className="text-sm text-gray-700 mb-3">{data.explanation || 'No explanation provided'}</p>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
         <div>
           <span className="text-gray-600">Raw Value:</span>
-          <strong className="ml-2">{data.rawValue} {unit}</strong>
+          <strong className="ml-2">{data.rawValue ?? 'N/A'} {unit}</strong>
         </div>
         <div>
           <span className="text-gray-600">Timeline:</span>
-          <strong className="ml-2">{data.rawTimeline} months</strong>
+          <strong className="ml-2">{data.rawTimeline ?? 'N/A'} months</strong>
         </div>
         <div>
           <span className="text-gray-600">Value Score:</span>
-          <strong className="ml-2">{data.valueScore.toFixed(2)}</strong>
+          <strong className="ml-2">{data.valueScore !== undefined ? data.valueScore.toFixed(2) : 'N/A'}</strong>
         </div>
         <div>
           <span className="text-gray-600">Time Score:</span>
-          <strong className="ml-2">{data.timeScore.toFixed(2)}</strong>
+          <strong className="ml-2">{data.timeScore !== undefined ? data.timeScore.toFixed(2) : 'N/A'}</strong>
         </div>
         <div>
           <span className="text-gray-600">Combined:</span>
-          <strong className="ml-2">{data.combinedScore.toFixed(2)}</strong>
+          <strong className="ml-2">{data.combinedScore !== undefined ? data.combinedScore.toFixed(2) : 'N/A'}</strong>
         </div>
         <div>
           <span className="text-gray-600">Weighted:</span>
-          <strong className="ml-2 text-green-700">{data.weightedScore.toFixed(2)}</strong>
+          <strong className="ml-2 text-green-700">{data.weightedScore !== undefined ? data.weightedScore.toFixed(2) : 'N/A'}</strong>
         </div>
       </div>
     </div>

@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Database, Calendar, Code2, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Database, Calendar, TrendingUp, AlertTriangle, Eye, Users, Clock, CheckCircle2 } from 'lucide-react';
 
 export default function ChangeRequestDebug() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['basic']));
 
   useEffect(() => {
     fetchDebugData();
@@ -36,22 +35,12 @@ export default function ChangeRequestDebug() {
     }
   };
 
-  const toggleSection = (section: string) => {
-    const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(section)) {
-      newExpanded.delete(section);
-    } else {
-      newExpanded.add(section);
-    }
-    setExpandedSections(newExpanded);
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
-          <p className="mt-4 text-green-400 font-mono">Loading database record...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading change request data...</p>
         </div>
       </div>
     );
@@ -59,171 +48,256 @@ export default function ChangeRequestDebug() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-900 p-6">
+      <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-red-900 border border-red-600 rounded-lg p-4">
-            <p className="text-red-200 font-mono">Error: {error || 'No data found'}</p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-800">Error: {error || 'No data found'}</p>
           </div>
         </div>
       </div>
     );
   }
 
+  const wizardData = data.wizard_data || {};
+  const effortFactors = data.effort_factors || {};
+  const benefitFactors = data.benefit_factors || {};
+
   return (
-    <div className="min-h-screen bg-gray-900 text-green-400 p-6 font-mono">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <Link
             to="/dashboard"
-            className="inline-flex items-center text-green-500 hover:text-green-300 mb-4"
+            className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            <span className="font-mono">back_to_dashboard()</span>
+            Back to Dashboard
           </Link>
 
-          <div className="bg-yellow-900 border-l-4 border-yellow-500 p-4 mb-4">
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 mb-4">
             <div className="flex items-center gap-3">
-              <Database className="h-5 w-5 text-yellow-400" />
+              <Database className="h-5 w-5 text-amber-600" />
               <div>
-                <p className="text-yellow-200 font-bold">⚠️ DEVELOPMENT DEBUG MODE</p>
-                <p className="text-yellow-300 text-sm mt-1">
-                  Raw database dump for change_requests table - ID: {data.id}
+                <p className="text-amber-900 font-bold">Development Debug View</p>
+                <p className="text-amber-700 text-sm mt-1">
+                  Complete data inspection for Change Request #{data.request_number || data.id}
                 </p>
               </div>
             </div>
           </div>
 
-          <h1 className="text-3xl font-bold text-green-500">
-            {'>'} SELECT * FROM change_requests WHERE id = {data.id};
+          <h1 className="text-3xl font-bold text-gray-900">
+            {data.title || wizardData.changeTitle || 'Untitled Change Request'}
           </h1>
+          <p className="text-gray-600 mt-2">
+            Status: <span className="font-semibold">{data.status}</span> |
+            Priority: <span className="font-semibold ml-2">{data.priority}</span>
+          </p>
         </div>
 
-        {/* Database Table View */}
-        <div className="bg-gray-800 border border-green-600 rounded-lg overflow-hidden mb-6">
-          <div className="bg-gray-700 px-4 py-2 border-b border-green-600">
-            <span className="text-green-400">change_requests</span>
-            <span className="text-gray-400 ml-4">| 1 row returned</span>
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Stats Cards */}
+          <StatCard
+            icon={<TrendingUp className="w-6 h-6" />}
+            title="Risk Score"
+            value={data.risk_score || 'Not calculated'}
+            subtitle={data.risk_level || ''}
+            color="red"
+          />
+          <StatCard
+            icon={<Clock className="w-6 h-6" />}
+            title="Effort Score"
+            value={data.effort_score || 'Not calculated'}
+            subtitle={data.effort_calculated_at ? formatDate(data.effort_calculated_at) : ''}
+            color="orange"
+          />
+          <StatCard
+            icon={<CheckCircle2 className="w-6 h-6" />}
+            title="Benefit Score"
+            value={data.benefit_score || 'Not calculated'}
+            subtitle={data.benefit_calculated_at ? formatDate(data.benefit_calculated_at) : ''}
+            color="green"
+          />
+        </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <tbody>
-                {/* Core Fields */}
-                <TableSection
-                  title="Core Fields"
-                  sectionKey="basic"
-                  expanded={expandedSections.has('basic')}
-                  onToggle={() => toggleSection('basic')}
-                >
-                  <TableRow label="id" value={data.id} type="INT" />
-                  <TableRow label="request_number" value={data.request_number} type="VARCHAR(50)" />
-                  <TableRow label="title" value={data.title} type="VARCHAR(255)" />
-                  <TableRow label="description" value={data.description} type="TEXT" />
-                  <TableRow label="requester_id" value={data.requester_id} type="INT" />
-                  <TableRow label="status" value={data.status} type="ENUM" />
-                  <TableRow label="priority" value={data.priority} type="ENUM" />
-                </TableSection>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Basic Information */}
+          <Section title="Basic Information" icon={<Database className="w-5 h-5" />}>
+            <InfoGrid>
+              <InfoItem label="Request Number" value={data.request_number} />
+              <InfoItem label="Title" value={wizardData.changeTitle} />
+              <InfoItem label="Description" value={wizardData.briefDescription} />
+              <InfoItem label="Proposed Date" value={wizardData.proposedDate ? formatDate(wizardData.proposedDate) : 'N/A'} />
+              <InfoItem label="Status" value={data.status} />
+              <InfoItem label="Priority" value={data.priority} />
+            </InfoGrid>
+          </Section>
 
-                {/* Timestamps */}
-                <TableSection
-                  title="Timestamps"
-                  sectionKey="timestamps"
-                  expanded={expandedSections.has('timestamps')}
-                  onToggle={() => toggleSection('timestamps')}
-                >
-                  <TableRow label="created_at" value={data.created_at} type="TIMESTAMP" />
-                  <TableRow label="updated_at" value={data.updated_at} type="TIMESTAMP" />
-                  <TableRow label="submitted_at" value={data.submitted_at} type="TIMESTAMP" />
-                  <TableRow label="scheduled_start" value={data.scheduled_start} type="TIMESTAMP" />
-                  <TableRow label="scheduled_end" value={data.scheduled_end} type="TIMESTAMP" />
-                  <TableRow label="actual_start" value={data.actual_start} type="TIMESTAMP" />
-                  <TableRow label="actual_end" value={data.actual_end} type="TIMESTAMP" />
-                </TableSection>
+          {/* Requester Information */}
+          <Section title="Requester Information" icon={<Users className="w-5 h-5" />}>
+            <InfoGrid>
+              <InfoItem label="Name" value={`${data.requester_first_name || ''} ${data.requester_last_name || ''}`.trim() || 'N/A'} />
+              <InfoItem label="Email" value={data.requester_email} />
+              <InfoItem label="Department" value={data.requester_department} />
+              <InfoItem label="Username" value={data.requester_username} />
+            </InfoGrid>
+          </Section>
 
-                {/* Risk Assessment */}
-                <TableSection
-                  title="Risk Assessment"
-                  sectionKey="risk"
-                  expanded={expandedSections.has('risk')}
-                  onToggle={() => toggleSection('risk')}
-                >
-                  <TableRow label="risk_score" value={data.risk_score} type="INT" />
-                  <TableRow label="risk_level" value={data.risk_level} type="VARCHAR(20)" />
-                  <TableRow label="risk_calculated_at" value={data.risk_calculated_at} type="TIMESTAMP" />
-                  <TableRow label="risk_calculated_by" value={data.risk_calculated_by} type="INT" />
-                </TableSection>
+          {/* Business Justification */}
+          <Section title="Business Justification" icon={<TrendingUp className="w-5 h-5" />}>
+            <div className="space-y-3">
+              <h4 className="font-semibold text-gray-700 mb-2">Selected Reasons:</h4>
+              <div className="flex flex-wrap gap-2">
+                {wizardData.changeReasons?.revenueImprovement && <Badge color="green">Revenue Improvement</Badge>}
+                {wizardData.changeReasons?.costReduction && <Badge color="blue">Cost Reduction</Badge>}
+                {wizardData.changeReasons?.customerImpact && <Badge color="purple">Customer Impact</Badge>}
+                {wizardData.changeReasons?.processImprovement && <Badge color="orange">Process Improvement</Badge>}
+                {wizardData.changeReasons?.internalQoL && <Badge color="teal">Internal QoL</Badge>}
+                {wizardData.changeReasons?.riskReduction && <Badge color="red">Risk Reduction</Badge>}
+              </div>
 
-                {/* Effort Assessment */}
-                <TableSection
-                  title="Effort Assessment"
-                  sectionKey="effort"
-                  expanded={expandedSections.has('effort')}
-                  onToggle={() => toggleSection('effort')}
-                >
-                  <TableRow label="effort_score" value={data.effort_score} type="INT" />
-                  <TableRow label="effort_calculated_at" value={data.effort_calculated_at} type="TIMESTAMP" />
-                  <TableRow label="effort_factors" value={data.effort_factors} type="JSON" isJson />
-                </TableSection>
+              {/* Revenue Details */}
+              {wizardData.revenueDetails && (
+                <DetailCard title="Revenue Improvement Details" color="green">
+                  <InfoItem label="Expected Revenue" value={wizardData.revenueDetails.expectedRevenue ? `£${wizardData.revenueDetails.expectedRevenue}` : 'N/A'} />
+                  <InfoItem label="Timeline" value={wizardData.revenueDetails.revenueTimeline} />
+                  <InfoItem label="Description" value={wizardData.revenueDetails.revenueDescription} fullWidth />
+                </DetailCard>
+              )}
 
-                {/* Benefit Assessment */}
-                <TableSection
-                  title="Benefit Assessment"
-                  sectionKey="benefit"
-                  expanded={expandedSections.has('benefit')}
-                  onToggle={() => toggleSection('benefit')}
-                >
-                  <TableRow label="benefit_score" value={data.benefit_score} type="INT" />
-                  <TableRow label="benefit_calculated_at" value={data.benefit_calculated_at} type="TIMESTAMP" />
-                  <TableRow label="benefit_factors" value={data.benefit_factors} type="JSON" isJson />
-                </TableSection>
+              {/* Cost Reduction Details */}
+              {wizardData.costReductionDetails && (
+                <DetailCard title="Cost Reduction Details" color="blue">
+                  <InfoItem label="Expected Savings" value={wizardData.costReductionDetails.expectedSavings ? `£${wizardData.costReductionDetails.expectedSavings}` : 'N/A'} />
+                  <InfoItem label="Cost Areas" value={wizardData.costReductionDetails.costareas} />
+                  <InfoItem label="Description" value={wizardData.costReductionDetails.savingsDescription} fullWidth />
+                </DetailCard>
+              )}
 
-                {/* JSON Data Columns */}
-                <TableSection
-                  title="JSON Data Columns"
-                  sectionKey="json"
-                  expanded={expandedSections.has('json')}
-                  onToggle={() => toggleSection('json')}
-                >
-                  <TableRow label="wizard_data" value={data.wizard_data} type="JSON" isJson />
-                  <TableRow label="scheduling_data" value={data.scheduling_data} type="JSON" isJson />
-                  <TableRow label="metrics_data" value={data.metrics_data} type="JSON" isJson />
-                  <TableRow label="prioritization_data" value={data.prioritization_data} type="JSON" isJson />
-                  <TableRow label="custom_fields" value={data.custom_fields} type="JSON" isJson />
-                </TableSection>
+              {/* Customer Impact Details */}
+              {wizardData.customerImpactDetails && (
+                <DetailCard title="Customer Impact Details" color="purple">
+                  <InfoItem label="Customers Affected" value={wizardData.customerImpactDetails.customersAffected} />
+                  <InfoItem label="Expected Satisfaction" value={wizardData.customerImpactDetails.expectedSatisfaction} />
+                  <InfoItem label="Description" value={wizardData.customerImpactDetails.impactDescription} fullWidth />
+                </DetailCard>
+              )}
 
-                {/* Requester Info (from JOIN) */}
-                {data.requester_email && (
-                  <TableSection
-                    title="Requester Info (JOINed from users table)"
-                    sectionKey="requester"
-                    expanded={expandedSections.has('requester')}
-                    onToggle={() => toggleSection('requester')}
-                  >
-                    <TableRow label="requester_email" value={data.requester_email} type="VARCHAR(255)" />
-                    <TableRow label="requester_username" value={data.requester_username} type="VARCHAR(100)" />
-                    <TableRow label="requester_first_name" value={data.requester_first_name} type="VARCHAR(100)" />
-                    <TableRow label="requester_last_name" value={data.requester_last_name} type="VARCHAR(100)" />
-                    <TableRow label="requester_department" value={data.requester_department} type="VARCHAR(100)" />
-                  </TableSection>
+              {/* Process Improvement Details */}
+              {wizardData.processImprovementDetails && (
+                <DetailCard title="Process Improvement Details" color="orange">
+                  <InfoItem label="Current Issues" value={wizardData.processImprovementDetails.currentIssues} />
+                  <InfoItem label="Expected Efficiency" value={wizardData.processImprovementDetails.expectedEfficiency} />
+                  <InfoItem label="Description" value={wizardData.processImprovementDetails.processDescription} fullWidth />
+                </DetailCard>
+              )}
+
+              {/* Internal QoL Details */}
+              {wizardData.internalQoLDetails && (
+                <DetailCard title="Internal QoL Details" color="teal">
+                  <InfoItem label="Users Affected" value={wizardData.internalQoLDetails.usersAffected} />
+                  <InfoItem label="Current Pain Points" value={wizardData.internalQoLDetails.currentPainPoints} />
+                  <InfoItem label="Expected Improvements" value={wizardData.internalQoLDetails.expectedImprovements} fullWidth />
+                </DetailCard>
+              )}
+
+              {/* Risk Reduction Details */}
+              {wizardData.riskReductionDetails && (
+                <DetailCard title="Risk Reduction Details" color="red">
+                  <InfoItem label="Current Risks" value={wizardData.riskReductionDetails.currentRisks} />
+                  <InfoItem label="Risk Mitigation" value={wizardData.riskReductionDetails.riskMitigation} />
+                  <InfoItem label="Compliance Improvement" value={wizardData.riskReductionDetails.complianceImprovement} fullWidth />
+                </DetailCard>
+              )}
+            </div>
+          </Section>
+
+          {/* Impact Assessment */}
+          <Section title="Impact Assessment" icon={<AlertTriangle className="w-5 h-5" />}>
+            <InfoGrid>
+              <InfoItem label="Systems Affected" value={Array.isArray(wizardData.systemsAffected) ? wizardData.systemsAffected.join(', ') : wizardData.systemsAffected} fullWidth />
+              <InfoItem label="Impacted Users" value={wizardData.impactedUsers} />
+              <InfoItem label="Departments" value={Array.isArray(wizardData.departments) ? wizardData.departments.join(', ') : wizardData.departments} fullWidth />
+              <InfoItem label="Estimated Effort (hours)" value={wizardData.estimatedEffortHours} />
+              <InfoItem label="Estimated Cost" value={wizardData.estimatedCost ? `£${wizardData.estimatedCost}` : 'N/A'} />
+            </InfoGrid>
+          </Section>
+
+          {/* Effort Factors */}
+          {data.effort_factors && Object.keys(effortFactors).length > 0 && (
+            <Section title="Effort Factors (Calculated)" icon={<Clock className="w-5 h-5" />} fullWidth>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {effortFactors.impactScope && <FactorBadge label="Impact Scope" value={effortFactors.impactScope} />}
+                {effortFactors.businessCritical && <FactorBadge label="Business Critical" value={effortFactors.businessCritical} />}
+                {effortFactors.complexity && <FactorBadge label="Complexity" value={effortFactors.complexity} />}
+                {effortFactors.testingCoverage && <FactorBadge label="Testing Coverage" value={effortFactors.testingCoverage} inverse />}
+                {effortFactors.rollbackCapability && <FactorBadge label="Rollback Capability" value={effortFactors.rollbackCapability} inverse />}
+                {effortFactors.historicalFailures && <FactorBadge label="Historical Failures" value={effortFactors.historicalFailures} />}
+                {effortFactors.costToImplement && <FactorBadge label="Cost to Implement" value={effortFactors.costToImplement} />}
+                {effortFactors.timeToImplement && <FactorBadge label="Time to Implement" value={effortFactors.timeToImplement} />}
+              </div>
+            </Section>
+          )}
+
+          {/* Benefit Factors */}
+          {data.benefit_factors && Object.keys(benefitFactors).length > 0 && (
+            <Section title="Benefit Factors (Calculated)" icon={<CheckCircle2 className="w-5 h-5" />} fullWidth>
+              <div className="space-y-3">
+                {benefitFactors.revenueImprovement && (
+                  <BenefitCard title="Revenue Improvement" data={benefitFactors.revenueImprovement} />
                 )}
-              </tbody>
-            </table>
-          </div>
+                {benefitFactors.costSavings && (
+                  <BenefitCard title="Cost Savings" data={benefitFactors.costSavings} />
+                )}
+                {benefitFactors.customerImpact && (
+                  <BenefitCard title="Customer Impact" data={benefitFactors.customerImpact} />
+                )}
+                {benefitFactors.processImprovement && (
+                  <BenefitCard title="Process Improvement" data={benefitFactors.processImprovement} />
+                )}
+                {benefitFactors.internalQoL && (
+                  <BenefitCard title="Internal QoL" data={benefitFactors.internalQoL} />
+                )}
+                {benefitFactors.strategicAlignment && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                    <h5 className="font-semibold text-purple-900 mb-1">Strategic Alignment</h5>
+                    <p className="text-sm text-gray-700 mb-2">{benefitFactors.strategicAlignment.explanation}</p>
+                    <div className="flex gap-4 text-sm">
+                      <span>Score: <strong>{benefitFactors.strategicAlignment.score}/10</strong></span>
+                      <span>Weighted: <strong>{benefitFactors.strategicAlignment.weightedScore?.toFixed(2)}</strong></span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {/* Timestamps */}
+          <Section title="Timestamps" icon={<Calendar className="w-5 h-5" />} fullWidth>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <InfoItem label="Created" value={formatDate(data.created_at)} />
+              <InfoItem label="Updated" value={formatDate(data.updated_at)} />
+              <InfoItem label="Submitted" value={formatDate(data.submitted_at)} />
+              <InfoItem label="Scheduled Start" value={formatDate(data.scheduled_start)} />
+              <InfoItem label="Scheduled End" value={formatDate(data.scheduled_end)} />
+              <InfoItem label="Actual Start" value={formatDate(data.actual_start)} />
+              <InfoItem label="Actual End" value={formatDate(data.actual_end)} />
+            </div>
+          </Section>
         </div>
 
-        {/* SQL Query Info */}
-        <div className="bg-gray-800 border border-blue-600 rounded-lg p-4 text-xs">
-          <div className="flex items-center gap-2 mb-2">
-            <Code2 className="w-4 h-4 text-blue-400" />
-            <span className="text-blue-400 font-bold">Query Info</span>
-          </div>
-          <div className="text-gray-400 space-y-1">
-            <div>Endpoint: <span className="text-green-400">GET /api/changes/{id}</span></div>
-            <div>Database: <span className="text-green-400">change_management</span></div>
-            <div>Table: <span className="text-green-400">change_requests</span></div>
-            <div>Fetched at: <span className="text-green-400">{new Date().toLocaleString('en-GB')}</span></div>
-          </div>
+        {/* Raw JSON Data (Collapsible) */}
+        <div className="mt-6">
+          <details className="bg-white rounded-lg shadow-md p-4">
+            <summary className="cursor-pointer font-semibold text-gray-700 hover:text-blue-600">
+              🔍 View Raw Database JSON
+            </summary>
+            <pre className="mt-4 bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-xs font-mono">
+              {JSON.stringify(data, null, 2)}
+            </pre>
+          </details>
         </div>
       </div>
     </div>
@@ -232,96 +306,139 @@ export default function ChangeRequestDebug() {
 
 // Helper Components
 
-interface TableSectionProps {
-  title: string;
-  sectionKey: string;
-  expanded: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}
-
-function TableSection({ title, sectionKey, expanded, onToggle, children }: TableSectionProps) {
-  return (
-    <>
-      <tr className="bg-gray-700 border-t-2 border-green-600">
-        <td
-          colSpan={3}
-          className="px-4 py-2 cursor-pointer hover:bg-gray-600"
-          onClick={onToggle}
-        >
-          <div className="flex items-center gap-2">
-            {expanded ? (
-              <ChevronDown className="w-4 h-4 text-yellow-400" />
-            ) : (
-              <ChevronRight className="w-4 h-4 text-yellow-400" />
-            )}
-            <span className="text-yellow-400 font-bold">{title}</span>
-          </div>
-        </td>
-      </tr>
-      {expanded && children}
-    </>
-  );
-}
-
-interface TableRowProps {
-  label: string;
-  value: any;
-  type: string;
-  isJson?: boolean;
-}
-
-function TableRow({ label, value, type, isJson = false }: TableRowProps) {
-  const [jsonExpanded, setJsonExpanded] = useState(false);
-
-  const formatValue = (val: any): string => {
-    if (val === null || val === undefined) {
-      return 'NULL';
-    }
-
-    if (typeof val === 'object') {
-      return JSON.stringify(val, null, 2);
-    }
-
-    return String(val);
+function StatCard({ icon, title, value, subtitle, color }: any) {
+  const colors = {
+    red: 'from-red-500 to-red-600 text-white',
+    orange: 'from-orange-500 to-orange-600 text-white',
+    green: 'from-green-500 to-green-600 text-white',
   };
 
-  const displayValue = formatValue(value);
-  const isNull = value === null || value === undefined;
-  const isLongText = displayValue.length > 100 || isJson;
+  return (
+    <div className={`bg-gradient-to-br ${colors[color]} rounded-xl shadow-lg p-6`}>
+      <div className="flex items-center justify-between mb-3">
+        {icon}
+        <span className="text-sm font-medium opacity-90">{title}</span>
+      </div>
+      <div className="text-3xl font-bold">{value}</div>
+      {subtitle && <div className="text-sm mt-2 opacity-75">{subtitle}</div>}
+    </div>
+  );
+}
+
+function Section({ title, icon, children, fullWidth = false }: any) {
+  return (
+    <div className={`bg-white rounded-xl shadow-md p-6 ${fullWidth ? 'lg:col-span-2' : ''}`}>
+      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
+        {icon}
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function InfoGrid({ children }: any) {
+  return <div className="grid grid-cols-1 gap-4">{children}</div>;
+}
+
+function InfoItem({ label, value, fullWidth = false }: any) {
+  return (
+    <div className={fullWidth ? 'col-span-full' : ''}>
+      <dt className="text-sm font-medium text-gray-500 mb-1">{label}</dt>
+      <dd className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded">{value || 'N/A'}</dd>
+    </div>
+  );
+}
+
+function Badge({ color, children }: any) {
+  const colors = {
+    green: 'bg-green-100 text-green-800 border-green-300',
+    blue: 'bg-blue-100 text-blue-800 border-blue-300',
+    purple: 'bg-purple-100 text-purple-800 border-purple-300',
+    orange: 'bg-orange-100 text-orange-800 border-orange-300',
+    teal: 'bg-teal-100 text-teal-800 border-teal-300',
+    red: 'bg-red-100 text-red-800 border-red-300',
+  };
 
   return (
-    <tr className="border-t border-gray-700 hover:bg-gray-750">
-      <td className="px-4 py-2 text-cyan-400 align-top whitespace-nowrap">{label}</td>
-      <td className="px-4 py-2 text-purple-400 align-top text-xs">{type}</td>
-      <td className="px-4 py-2 align-top">
-        {isNull ? (
-          <span className="text-gray-500 italic">NULL</span>
-        ) : isLongText && isJson ? (
-          <div>
-            <button
-              onClick={() => setJsonExpanded(!jsonExpanded)}
-              className="text-blue-400 hover:text-blue-300 mb-2 flex items-center gap-1"
-            >
-              {jsonExpanded ? (
-                <ChevronDown className="w-3 h-3" />
-              ) : (
-                <ChevronRight className="w-3 h-3" />
-              )}
-              {jsonExpanded ? 'Hide JSON' : 'Show JSON'}
-            </button>
-            {jsonExpanded && (
-              <pre className="bg-gray-900 border border-gray-600 rounded p-3 overflow-x-auto text-xs text-green-300">
-                {displayValue}
-              </pre>
-            )}
-          </div>
-        ) : (
-          <div className="text-green-300 break-words max-w-3xl">
-            {displayValue}
-          </div>
-        )}
-      </td>
-    </tr>
+    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${colors[color]}`}>
+      {children}
+    </span>
   );
+}
+
+function DetailCard({ title, color, children }: any) {
+  const colors = {
+    green: 'bg-green-50 border-green-200',
+    blue: 'bg-blue-50 border-blue-200',
+    purple: 'bg-purple-50 border-purple-200',
+    orange: 'bg-orange-50 border-orange-200',
+    teal: 'bg-teal-50 border-teal-200',
+    red: 'bg-red-50 border-red-200',
+  };
+
+  return (
+    <div className={`border rounded-lg p-3 mt-3 ${colors[color]}`}>
+      <h5 className="font-semibold text-gray-900 mb-2">{title}</h5>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function FactorBadge({ label, value, inverse = false }: any) {
+  const getColor = (val: number, inv: boolean) => {
+    const adjustedVal = inv ? (6 - val) : val;
+    if (adjustedVal >= 4) return 'bg-red-100 text-red-800 border-red-300';
+    if (adjustedVal >= 3) return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    return 'bg-green-100 text-green-800 border-green-300';
+  };
+
+  return (
+    <div className={`border rounded-lg p-3 text-center ${getColor(value, inverse)}`}>
+      <div className="text-xs font-medium mb-1">{label}</div>
+      <div className="text-2xl font-bold">{value}/5</div>
+      {inverse && <div className="text-xs mt-1 opacity-75">(inverse)</div>}
+    </div>
+  );
+}
+
+function BenefitCard({ title, data }: any) {
+  if (!data) return null;
+
+  return (
+    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+      <h5 className="font-semibold text-green-900 mb-2">{title}</h5>
+      <p className="text-sm text-gray-700 mb-2">{data.explanation || 'No explanation provided'}</p>
+      <div className="grid grid-cols-3 gap-2 text-xs">
+        <div className="bg-white rounded p-2">
+          <div className="text-gray-600">Raw Value</div>
+          <div className="font-bold text-gray-900">{data.rawValue || 'N/A'}</div>
+        </div>
+        <div className="bg-white rounded p-2">
+          <div className="text-gray-600">Timeline</div>
+          <div className="font-bold text-gray-900">{data.rawTimeline || 'N/A'} mo</div>
+        </div>
+        <div className="bg-white rounded p-2">
+          <div className="text-gray-600">Weighted Score</div>
+          <div className="font-bold text-green-700">{data.weightedScore?.toFixed(2) || 'N/A'}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatDate(dateString: string | null): string {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return 'Invalid date';
+  }
 }

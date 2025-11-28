@@ -7,6 +7,7 @@ import { connectDatabase } from './config/database.js';
 import authRoutes from './routes/auth.js';
 import changeRoutes from './routes/changes.js';
 import benefitConfigRoutes from './routes/benefitConfig.js';
+import metricsRoutes from './routes/metrics.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -29,6 +30,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/changes', changeRoutes);
 app.use('/api/benefit-config', benefitConfigRoutes);
+app.use('/api/metrics', metricsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

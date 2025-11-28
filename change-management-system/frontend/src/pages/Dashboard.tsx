@@ -2,9 +2,19 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useChangesStore } from '../store/changesStore';
 import { useAuthStore } from '../store/authStore';
-import { Plus, AlertCircle, CheckCircle, Clock, XCircle, FileText, TrendingUp, Activity, Award, Bug } from 'lucide-react';
+import { Plus, AlertCircle, CheckCircle, Clock, XCircle, FileText, TrendingUp, Activity, Award, Bug, Trash2, Banknote, TrendingDown, Users, Zap, Heart, Target } from 'lucide-react';
 import { format } from 'date-fns';
 import type { ChangeStatus } from '@cm/types';
+import { toast } from 'sonner';
+
+const benefitReasonIcons: Record<string, { icon: typeof Banknote; label: string; color: string }> = {
+  revenueImprovement: { icon: Banknote, label: 'Revenue Improvement', color: 'text-green-600' },
+  costReduction: { icon: TrendingDown, label: 'Cost Reduction', color: 'text-blue-600' },
+  customerImpact: { icon: Users, label: 'Customer Impact', color: 'text-purple-600' },
+  processImprovement: { icon: Zap, label: 'Process Improvement', color: 'text-yellow-600' },
+  internalQoL: { icon: Heart, label: 'Internal Quality of Life', color: 'text-pink-600' },
+  riskReduction: { icon: Target, label: 'Risk Reduction', color: 'text-red-600' },
+};
 
 const statusConfig: Record<
   string,
@@ -34,13 +44,26 @@ const statusConfig: Record<
 };
 
 export default function Dashboard() {
-  const { changes, fetchChanges, isLoading } = useChangesStore();
+  const { changes, fetchChanges, deleteChange, isLoading } = useChangesStore();
   const { user } = useAuthStore();
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchChanges();
   }, [fetchChanges]);
+
+  const handleDelete = async (id: number, title: string) => {
+    if (window.confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
+      try {
+        await deleteChange(id.toString());
+        toast.success('Change request deleted successfully');
+        fetchChanges();
+      } catch (error) {
+        toast.error('Failed to delete change request');
+        console.error('Delete error:', error);
+      }
+    }
+  };
 
   const filteredChanges = changes.filter((change) => {
     if (statusFilter === 'all') return true;
@@ -203,6 +226,7 @@ export default function Dashboard() {
                     <tr className="border-b-2 border-gray-200 dark:border-gray-700">
                       <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Title</th>
                       <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Status</th>
+                      <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Benefit Reasons</th>
                       <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Date Submitted</th>
                       <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Actions</th>
                     </tr>
@@ -249,6 +273,28 @@ export default function Dashboard() {
                               {statusInfo.label}
                             </span>
                           </td>
+                          <td className="py-4">
+                            <div className="flex gap-2">
+                              {change.wizardData?.changeReasons && Object.entries(change.wizardData.changeReasons).map(([key, value]) => {
+                                if (value && benefitReasonIcons[key]) {
+                                  const { icon: Icon, label, color } = benefitReasonIcons[key];
+                                  return (
+                                    <div
+                                      key={key}
+                                      title={label}
+                                      className="group relative"
+                                    >
+                                      <Icon size={20} className={`${color} hover:scale-110 transition-transform cursor-help`} />
+                                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs font-medium text-white bg-gray-800 dark:bg-gray-900 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border border-gray-600">
+                                        {label}
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })}
+                            </div>
+                          </td>
                           <td className="py-4 text-sm text-gray-600 dark:text-gray-400">
                             {change.submittedAt || change.createdAt ? format(new Date(change.submittedAt || change.createdAt), 'MMM d, yyyy') : 'N/A'}
                           </td>
@@ -267,6 +313,13 @@ export default function Dashboard() {
                               >
                                 <Bug size={16} />
                               </Link>
+                              <button
+                                onClick={() => handleDelete(change.id, change.title || 'Untitled')}
+                                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-red-100 text-red-800 text-sm font-semibold hover:bg-red-200 transition-all border border-red-300"
+                                title="Delete Change Request"
+                              >
+                                <Trash2 size={16} />
+                              </button>
                             </div>
                           </td>
                         </tr>

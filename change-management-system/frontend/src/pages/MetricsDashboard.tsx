@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
-  AreaChart,
-  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -16,250 +13,196 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Calendar, TrendingUp, TrendingDown, Activity, Clock } from 'lucide-react';
+import { Banknote, TrendingDown, Clock, FileText, XCircle, Calendar as CalendarIcon, CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
-// Sample data - will be replaced with real API data
-const statusDistributionData = [
-  { name: 'New', value: 12, color: '#3b82f6' },
-  { name: 'In Review', value: 8, color: '#f59e0b' },
-  { name: 'Approved', value: 15, color: '#10b981' },
-  { name: 'Scheduled', value: 6, color: '#8b5cf6' },
-  { name: 'Implementing', value: 4, color: '#06b6d4' },
-  { name: 'Completed', value: 45, color: '#059669' },
-  { name: 'Rejected', value: 3, color: '#ef4444' },
-];
+interface MetricsData {
+  benefitTypes: Array<{ benefit_type: string; count: number }>;
+  revenue: { total: number };
+  costSavings: { total: number };
+  hoursSaved: { total: number };
+  statusCounts: {
+    submitted: number;
+    rejected: number;
+    scheduled: number;
+    completed: number;
+  };
+}
 
-const monthlyTrendData = [
-  { month: 'Jan', created: 12, completed: 8, approved: 10 },
-  { month: 'Feb', created: 15, completed: 12, approved: 13 },
-  { month: 'Mar', created: 18, completed: 14, approved: 16 },
-  { month: 'Apr', created: 14, completed: 16, approved: 15 },
-  { month: 'May', created: 20, completed: 18, approved: 19 },
-  { month: 'Jun', created: 16, completed: 15, approved: 17 },
-];
+const benefitTypeLabels: Record<string, string> = {
+  revenueImprovement: 'Revenue Improvement',
+  costReduction: 'Cost Reduction',
+  customerImpact: 'Customer Impact',
+  processImprovement: 'Process Improvement',
+  internalQoL: 'Internal QoL',
+  riskReduction: 'Risk Reduction',
+};
 
-const changeTypeData = [
-  { type: 'Emergency', count: 5 },
-  { type: 'Major', count: 15 },
-  { type: 'Minor', count: 35 },
-  { type: 'Standard', count: 38 },
-];
-
-const riskLevelData = [
-  { risk: 'Critical', count: 4 },
-  { risk: 'High', count: 12 },
-  { risk: 'Medium', count: 28 },
-  { risk: 'Low', count: 49 },
-];
-
-const successRateData = [
-  { month: 'Jan', rate: 85 },
-  { month: 'Feb', rate: 88 },
-  { month: 'Mar', rate: 92 },
-  { month: 'Apr', rate: 90 },
-  { month: 'May', rate: 94 },
-  { month: 'Jun', rate: 96 },
-];
-
-const avgImplementationTimeData = [
-  { month: 'Jan', days: 12 },
-  { month: 'Feb', days: 11 },
-  { month: 'Mar', days: 10 },
-  { month: 'Apr', days: 9 },
-  { month: 'May', days: 8.5 },
-  { month: 'Jun', days: 8 },
-];
+const benefitTypeColors: Record<string, string> = {
+  revenueImprovement: '#10b981',
+  costReduction: '#3b82f6',
+  customerImpact: '#8b5cf6',
+  processImprovement: '#f59e0b',
+  internalQoL: '#ec4899',
+  riskReduction: '#ef4444',
+};
 
 export const MetricsDashboard: React.FC = () => {
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
+  const [metrics, setMetrics] = useState<MetricsData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMetrics();
+  }, []);
+
+  const fetchMetrics = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/metrics`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data.success) {
+        setMetrics(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch metrics:', error);
+      toast.error('Failed to load metrics data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!metrics) {
+    return (
+      <div className="p-6">
+        <div className="text-center text-gray-500">Failed to load metrics</div>
+      </div>
+    );
+  }
+
+  // Prepare chart data
+  const benefitTypeChartData = metrics.benefitTypes.map((item) => ({
+    name: benefitTypeLabels[item.benefit_type] || item.benefit_type,
+    count: item.count,
+    color: benefitTypeColors[item.benefit_type] || '#6b7280',
+  }));
+
+  const financialData = [
+    { name: 'Revenue Improvement', value: metrics.revenue.total, color: '#10b981' },
+    { name: 'Cost Reduction', value: metrics.costSavings.total, color: '#3b82f6' },
+  ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Advanced Metrics Dashboard
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Metrics Dashboard
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Comprehensive analytics and insights for change management
+          <p className="text-gray-600 dark:text-gray-400 mt-2 text-lg">
+            Key performance indicators and analytics
           </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setTimeRange('7d')}
-            className={`px-4 py-2 rounded-lg ${
-              timeRange === '7d'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-            }`}
-          >
-            7 Days
-          </button>
-          <button
-            onClick={() => setTimeRange('30d')}
-            className={`px-4 py-2 rounded-lg ${
-              timeRange === '30d'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-            }`}
-          >
-            30 Days
-          </button>
-          <button
-            onClick={() => setTimeRange('90d')}
-            className={`px-4 py-2 rounded-lg ${
-              timeRange === '90d'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-            }`}
-          >
-            90 Days
-          </button>
-          <button
-            onClick={() => setTimeRange('1y')}
-            className={`px-4 py-2 rounded-lg ${
-              timeRange === '1y'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-            }`}
-          >
-            1 Year
-          </button>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Success Rate</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">96%</p>
-              <div className="flex items-center mt-2 text-green-600">
-                <TrendingUp className="w-4 h-4 mr-1" />
-                <span className="text-sm">+4% from last month</span>
-              </div>
+        {/* New Changes Submitted */}
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+              <FileText size={24} />
             </div>
-            <div className="bg-green-100 dark:bg-green-900 p-3 rounded-full">
-              <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div className="text-right">
+              <p className="text-blue-100 text-sm font-medium">New Submissions</p>
+              <p className="text-4xl font-bold mt-1">{metrics.statusCounts.submitted}</p>
             </div>
+          </div>
+          <div className="text-blue-100 text-sm">
+            Changes submitted for review
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Avg Implementation</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">8 days</p>
-              <div className="flex items-center mt-2 text-green-600">
-                <TrendingDown className="w-4 h-4 mr-1" />
-                <span className="text-sm">-2 days from last month</span>
-              </div>
+        {/* Rejected Changes */}
+        <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+              <XCircle size={24} />
             </div>
-            <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-full">
-              <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="text-right">
+              <p className="text-red-100 text-sm font-medium">Rejected</p>
+              <p className="text-4xl font-bold mt-1">{metrics.statusCounts.rejected}</p>
             </div>
+          </div>
+          <div className="text-red-100 text-sm">
+            Changes not approved
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Active Changes</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">34</p>
-              <div className="flex items-center mt-2 text-blue-600">
-                <Activity className="w-4 h-4 mr-1" />
-                <span className="text-sm">12 in review</span>
-              </div>
+        {/* Scheduled Changes */}
+        <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+              <CalendarIcon size={24} />
             </div>
-            <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-full">
-              <Activity className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <div className="text-right">
+              <p className="text-indigo-100 text-sm font-medium">Scheduled</p>
+              <p className="text-4xl font-bold mt-1">{metrics.statusCounts.scheduled}</p>
             </div>
+          </div>
+          <div className="text-indigo-100 text-sm">
+            Ready for implementation
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">This Month</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">16</p>
-              <div className="flex items-center mt-2 text-green-600">
-                <TrendingUp className="w-4 h-4 mr-1" />
-                <span className="text-sm">+20% from last month</span>
-              </div>
+        {/* Completed Changes */}
+        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+              <CheckCircle size={24} />
             </div>
-            <div className="bg-orange-100 dark:bg-orange-900 p-3 rounded-full">
-              <Calendar className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+            <div className="text-right">
+              <p className="text-green-100 text-sm font-medium">Completed</p>
+              <p className="text-4xl font-bold mt-1">{metrics.statusCounts.completed}</p>
             </div>
+          </div>
+          <div className="text-green-100 text-sm">
+            Successfully finished
           </div>
         </div>
       </div>
 
-      {/* Charts Row 1 */}
+      {/* Charts Row 1 - Benefit Types and Financial */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Monthly Trend Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Monthly Change Trends
+        {/* Changes by Benefit Type */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Changes by Benefit Type
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={monthlyTrendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="month" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#fff',
-                }}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="created"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                name="Created"
-              />
-              <Line
-                type="monotone"
-                dataKey="approved"
-                stroke="#10b981"
-                strokeWidth={2}
-                name="Approved"
-              />
-              <Line
-                type="monotone"
-                dataKey="completed"
-                stroke="#8b5cf6"
-                strokeWidth={2}
-                name="Completed"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Status Distribution Pie Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Status Distribution
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={350}>
             <PieChart>
               <Pie
-                data={statusDistributionData}
+                data={benefitTypeChartData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={100}
+                label={({ name, count }) => `${name}: ${count}`}
+                labelStyle={{ fill: '#374151', fontSize: '12px', fontWeight: '500' }}
+                outerRadius={120}
                 fill="#8884d8"
-                dataKey="value"
+                dataKey="count"
               >
-                {statusDistributionData.map((entry, index) => (
+                {benefitTypeChartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -268,121 +211,74 @@ export const MetricsDashboard: React.FC = () => {
                   backgroundColor: '#1f2937',
                   border: 'none',
                   borderRadius: '8px',
-                  color: '#fff',
+                  color: '#ffffff',
+                }}
+                itemStyle={{
+                  color: '#ffffff',
+                }}
+                labelStyle={{
+                  color: '#ffffff',
                 }}
               />
             </PieChart>
           </ResponsiveContainer>
         </div>
-      </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Change Type Bar Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Changes by Type
+        {/* Revenue Improvement & Cost Reduction */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Revenue & Cost Savings
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={changeTypeData}>
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={financialData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="type" stroke="#9ca3af" />
+              <XAxis dataKey="name" stroke="#9ca3af" />
               <YAxis stroke="#9ca3af" />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#1f2937',
                   border: 'none',
                   borderRadius: '8px',
-                  color: '#fff',
+                  color: '#ffffff',
                 }}
-              />
-              <Bar dataKey="count" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Risk Level Bar Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Changes by Risk Level
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={riskLevelData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="risk" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#fff',
+                itemStyle={{
+                  color: '#ffffff',
                 }}
+                labelStyle={{
+                  color: '#ffffff',
+                }}
+                formatter={(value: number) => `£${value.toLocaleString()}`}
               />
-              <Bar dataKey="count" fill="#10b981" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                {financialData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Charts Row 3 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Success Rate Area Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Success Rate Trend
+      {/* Charts Row 2 - Hours Saved */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Hours Saved Card */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Process Efficiency
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={successRateData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="month" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" domain={[0, 100]} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#fff',
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="rate"
-                stroke="#10b981"
-                fill="#10b981"
-                fillOpacity={0.6}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Avg Implementation Time */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Avg Implementation Time (Days)
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={avgImplementationTimeData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="month" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#fff',
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="days"
-                stroke="#f59e0b"
-                fill="#f59e0b"
-                fillOpacity={0.6}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-4">
+                <Clock size={48} className="text-yellow-500" />
+              </div>
+              <p className="text-5xl font-bold text-gray-900 dark:text-white mb-2">
+                {metrics.hoursSaved.total.toLocaleString()}
+              </p>
+              <p className="text-xl text-gray-600 dark:text-gray-400">
+                Hours Saved Through Process Improvements
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

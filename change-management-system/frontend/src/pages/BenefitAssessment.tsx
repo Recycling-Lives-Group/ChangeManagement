@@ -62,6 +62,7 @@ export const BenefitAssessment: React.FC = () => {
     riskLevel: 1.4,             // Medium - Risk consideration
     resourceRequirement: 1.0,   // Low - Resources needed (inverse)
   });
+  const [benefitConfigs, setBenefitConfigs] = useState<Record<string, any>>({});
   const [showWeightConfig, setShowWeightConfig] = useState(false);
   const [sortedChanges, setSortedChanges] = useState<ChangeRequest[]>([]);
   const [hasCalculated, setHasCalculated] = useState(false);
@@ -71,6 +72,32 @@ export const BenefitAssessment: React.FC = () => {
   useEffect(() => {
     fetchChanges();
   }, [fetchChanges]);
+
+  // Load benefit configs on mount
+  useEffect(() => {
+    const loadBenefitConfigs = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/benefit-config`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.data.success) {
+          // Convert array to keyed object
+          const configsObj: Record<string, any> = {};
+          response.data.data.forEach((config: any) => {
+            configsObj[config.benefitType] = config;
+          });
+          setBenefitConfigs(configsObj);
+        }
+      } catch (error) {
+        console.error('Failed to load benefit configs:', error);
+        toast.error('Failed to load benefit scoring configuration');
+      }
+    };
+
+    loadBenefitConfigs();
+  }, []);
 
   // Convert store changes to prioritization format
   useEffect(() => {
@@ -101,9 +128,14 @@ export const BenefitAssessment: React.FC = () => {
       return;
     }
 
+    if (Object.keys(benefitConfigs).length === 0) {
+      toast.error('Benefit configuration not loaded yet');
+      return;
+    }
+
     const changesWithScores = changes.map((change) => {
       // Use extractBenefitFactors to properly extract detailed benefit factors from wizardData
-      const { factors, score } = extractBenefitFactors(change.wizardData || {}, weights);
+      const { factors, score } = extractBenefitFactors(change.wizardData || {}, weights, benefitConfigs);
 
       return {
         ...change,
@@ -129,7 +161,7 @@ export const BenefitAssessment: React.FC = () => {
 
   useEffect(() => {
     calculatePriorities();
-  }, [changes, weights]);
+  }, [changes, weights, benefitConfigs]);
 
   const handleWeightChange = (weight: keyof PriorityWeights, value: number) => {
     setWeights((prev) => ({ ...prev, [weight]: value }));

@@ -228,6 +228,7 @@ export default function Dashboard() {
                       <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Status</th>
                       <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Benefit Reasons</th>
                       <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Date Submitted</th>
+                      <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Scheduled Date</th>
                       <th className="pb-4 text-left font-semibold text-gray-700 dark:text-gray-300">Actions</th>
                     </tr>
                   </thead>
@@ -297,6 +298,9 @@ export default function Dashboard() {
                           </td>
                           <td className="py-4 text-sm text-gray-600 dark:text-gray-400">
                             {change.submittedAt || change.createdAt ? format(new Date(change.submittedAt || change.createdAt), 'MMM d, yyyy') : 'N/A'}
+                          </td>
+                          <td className="py-4 text-sm text-gray-600 dark:text-gray-400">
+                            {change.scheduledStart ? format(new Date(change.scheduledStart), 'MMM d, yyyy') : '-'}
                           </td>
                           <td className="py-4">
                             <div className="flex gap-2">

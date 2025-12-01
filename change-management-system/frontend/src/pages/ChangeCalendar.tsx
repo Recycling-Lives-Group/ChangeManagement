@@ -56,15 +56,15 @@ export const ChangeCalendar: React.FC = () => {
              change.status === 'in_progress' || change.status === 'implementing';
     })
     .map(change => {
-      // Use scheduled_start if available, otherwise use proposedDate from wizardData
+      // Use scheduledStart if available, otherwise use proposedDate from wizardData
       const wizardData = change.wizardData || {};
-      const proposedDate = change.scheduled_start || wizardData.proposedDate;
+      const proposedDate = change.scheduledStart || wizardData.proposedDate;
 
       if (!proposedDate) return null;
 
       const startDate = new Date(proposedDate);
-      const endDate = change.scheduled_end
-        ? new Date(change.scheduled_end)
+      const endDate = change.scheduledEnd
+        ? new Date(change.scheduledEnd)
         : new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // Default 2 hours
 
       return {
@@ -145,11 +145,15 @@ export const ChangeCalendar: React.FC = () => {
       const startDateTime = moment(`${editStartDate} ${editStartTime}`, 'YYYY-MM-DD HH:mm').toDate();
       const endDateTime = moment(startDateTime).add(parseFloat(editDuration), 'hours').toDate();
 
-      await updateChange(selectedEvent.id, {
+      const updateData = {
         status: 'scheduled',
-        scheduled_start: startDateTime.toISOString(),
-        scheduled_end: endDateTime.toISOString(),
-      });
+        scheduledStart: startDateTime.toISOString(),
+        scheduledEnd: endDateTime.toISOString(),
+      };
+
+      console.log('Updating change with:', updateData);
+
+      await updateChange(selectedEvent.id, updateData);
 
       toast.success('Schedule updated successfully!');
       setIsEditing(false);

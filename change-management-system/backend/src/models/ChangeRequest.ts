@@ -343,22 +343,26 @@ export class ChangeRequest {
       updates.push('risk_calculated_by = ?');
       params.push(data.risk_calculated_by);
     }
-    // Scheduling fields
-    if (data.scheduled_start !== undefined) {
+    // Scheduling fields (accept both snake_case and camelCase)
+    if (data.scheduled_start !== undefined || (data as any).scheduledStart !== undefined) {
+      const scheduledStartValue = data.scheduled_start || (data as any).scheduledStart;
+      console.log('Setting scheduled_start:', scheduledStartValue, 'Type:', typeof scheduledStartValue);
       updates.push('scheduled_start = ?');
-      params.push(data.scheduled_start);
+      params.push(scheduledStartValue);
     }
-    if (data.scheduled_end !== undefined) {
+    if (data.scheduled_end !== undefined || (data as any).scheduledEnd !== undefined) {
+      const scheduledEndValue = data.scheduled_end || (data as any).scheduledEnd;
+      console.log('Setting scheduled_end:', scheduledEndValue, 'Type:', typeof scheduledEndValue);
       updates.push('scheduled_end = ?');
-      params.push(data.scheduled_end);
+      params.push(scheduledEndValue);
     }
-    if (data.actual_start !== undefined) {
+    if (data.actual_start !== undefined || (data as any).actualStart !== undefined) {
       updates.push('actual_start = ?');
-      params.push(data.actual_start);
+      params.push(data.actual_start || (data as any).actualStart);
     }
-    if (data.actual_end !== undefined) {
+    if (data.actual_end !== undefined || (data as any).actualEnd !== undefined) {
       updates.push('actual_end = ?');
-      params.push(data.actual_end);
+      params.push(data.actual_end || (data as any).actualEnd);
     }
 
     if (updates.length === 0) {
@@ -366,10 +370,11 @@ export class ChangeRequest {
     }
 
     params.push(id);
-    await db.execute(
-      `UPDATE change_requests SET ${updates.join(', ')} WHERE id = ?`,
-      params
-    );
+    const sql = `UPDATE change_requests SET ${updates.join(', ')} WHERE id = ?`;
+    console.log('SQL:', sql);
+    console.log('Params:', params);
+
+    await db.execute(sql, params);
 
     return this.findById(id);
   }

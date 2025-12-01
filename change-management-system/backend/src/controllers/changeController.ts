@@ -259,26 +259,60 @@ export const updateChange = async (req: AuthRequest, res: Response) => {
     const title = req.body.title || wizardData.changeTitle || change.title;
     const description = req.body.description || wizardData.briefDescription || change.description;
 
-    console.log('Updating change with data:', req.body);
+    console.log('Updating change with data:', JSON.stringify(req.body, null, 2));
+    console.log('scheduledStart:', req.body.scheduledStart, 'scheduledEnd:', req.body.scheduledEnd);
 
     // Convert ISO datetime to MySQL format (YYYY-MM-DD HH:MM:SS)
-    const toMySQLDateTime = (isoString: string | undefined): Date | null => {
+    const toMySQLDateTime = (isoString: string | undefined | null): Date | null => {
       if (!isoString) return null;
-      return new Date(isoString);
+      try {
+        return new Date(isoString);
+      } catch (e) {
+        console.error('Error parsing date:', isoString, e);
+        return null;
+      }
     };
 
-    const updatedChange = await ChangeRequest.update(change.id, {
+    // Prepare update data
+    const updateData: any = {
       title: title,
       description: description,
-      status: req.body.status,
-      priority: req.body.priority,
-      wizard_data: req.body.wizardData,
-      scheduling_data: req.body.schedulingData,
-      effort_score: req.body.effort_score,
-      benefit_score: req.body.benefit_score,
-      effort_calculated_at: toMySQLDateTime(req.body.effort_calculated_at),
-      benefit_calculated_at: toMySQLDateTime(req.body.benefit_calculated_at),
-    });
+    };
+
+    // Only add fields that are actually provided
+    if (req.body.status !== undefined) updateData.status = req.body.status;
+    if (req.body.priority !== undefined) updateData.priority = req.body.priority;
+    if (req.body.wizardData !== undefined) updateData.wizard_data = req.body.wizardData;
+    if (req.body.schedulingData !== undefined) updateData.scheduling_data = req.body.schedulingData;
+    if (req.body.effort_score !== undefined) updateData.effort_score = req.body.effort_score;
+    if (req.body.benefit_score !== undefined) updateData.benefit_score = req.body.benefit_score;
+    if (req.body.effort_calculated_at !== undefined) updateData.effort_calculated_at = toMySQLDateTime(req.body.effort_calculated_at);
+    if (req.body.benefit_calculated_at !== undefined) updateData.benefit_calculated_at = toMySQLDateTime(req.body.benefit_calculated_at);
+
+    // Handle scheduled dates (accept both camelCase and snake_case)
+    const scheduledStart = req.body.scheduledStart || req.body.scheduled_start;
+    const scheduledEnd = req.body.scheduledEnd || req.body.scheduled_end;
+    const actualStart = req.body.actualStart || req.body.actual_start;
+    const actualEnd = req.body.actualEnd || req.body.actual_end;
+
+    if (scheduledStart !== undefined) {
+      updateData.scheduled_start = toMySQLDateTime(scheduledStart);
+      console.log('Setting scheduled_start to:', updateData.scheduled_start);
+    }
+    if (scheduledEnd !== undefined) {
+      updateData.scheduled_end = toMySQLDateTime(scheduledEnd);
+      console.log('Setting scheduled_end to:', updateData.scheduled_end);
+    }
+    if (actualStart !== undefined) {
+      updateData.actual_start = toMySQLDateTime(actualStart);
+    }
+    if (actualEnd !== undefined) {
+      updateData.actual_end = toMySQLDateTime(actualEnd);
+    }
+
+    console.log('Final update data:', JSON.stringify(updateData, null, 2));
+
+    const updatedChange = await ChangeRequest.update(change.id, updateData);
 
     if (!updatedChange) {
       return res.status(404).json({

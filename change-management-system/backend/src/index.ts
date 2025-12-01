@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import changeRoutes from './routes/changes.js';
 import benefitConfigRoutes from './routes/benefitConfig.js';
 import metricsRoutes from './routes/metrics.js';
+import diagramRoutes from './routes/diagram.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -31,6 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/changes', changeRoutes);
 app.use('/api/benefit-config', benefitConfigRoutes);
 app.use('/api/metrics', metricsRoutes);
+app.use('/api/diagram', diagramRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

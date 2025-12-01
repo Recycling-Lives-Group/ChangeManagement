@@ -119,51 +119,51 @@ export default function Dashboard() {
           </div>
 
           {/* Pending Approval Card */}
-          <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
                 <Clock size={24} />
               </div>
               <div className="text-right">
-                <p className="text-yellow-100 text-sm font-medium">Pending Approval</p>
+                <p className="text-blue-100 text-sm font-medium">Pending Approval</p>
                 <p className="text-4xl font-bold mt-1">{stats.pending}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-yellow-100 text-sm">
+            <div className="flex items-center gap-2 text-blue-100 text-sm">
               <AlertCircle size={16} />
               <span>Awaiting review</span>
             </div>
           </div>
 
           {/* In Progress Card */}
-          <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
                 <Activity size={24} />
               </div>
               <div className="text-right">
-                <p className="text-purple-100 text-sm font-medium">In Progress</p>
+                <p className="text-blue-100 text-sm font-medium">In Progress</p>
                 <p className="text-4xl font-bold mt-1">{stats.inProgress}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-purple-100 text-sm">
+            <div className="flex items-center gap-2 text-blue-100 text-sm">
               <TrendingUp size={16} />
               <span>Currently active</span>
             </div>
           </div>
 
           {/* Completed Card */}
-          <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
                 <Award size={24} />
               </div>
               <div className="text-right">
-                <p className="text-green-100 text-sm font-medium">Completed</p>
+                <p className="text-blue-100 text-sm font-medium">Completed</p>
                 <p className="text-4xl font-bold mt-1">{stats.completed}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-green-100 text-sm">
+            <div className="flex items-center gap-2 text-blue-100 text-sm">
               <CheckCircle size={16} />
               <span>Successfully finished</span>
             </div>

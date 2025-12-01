@@ -244,14 +244,7 @@ export default function ChangeForm() {
           </div>
 
           {/* Form Content */}
-          <form onSubmit={(e) => {
-            // Prevent form submission unless on final step (step 4)
-            if (currentStep !== 4) {
-              e.preventDefault();
-              return;
-            }
-            handleSubmit(onSubmit)(e);
-          }} className="px-8 py-8">
+          <form onSubmit={handleSubmit(onSubmit)} className="px-8 py-8">
             <div className="min-h-[500px]">
               {/* Step 1: Basic Information */}
               {currentStep === 1 && (

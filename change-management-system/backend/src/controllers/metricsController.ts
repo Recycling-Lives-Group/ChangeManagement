@@ -62,10 +62,10 @@ export const getMetrics = async (req: AuthRequest, res: Response) => {
     // Get hours saved (process improvement)
     const [hoursSavedResults] = await db.query(`
       SELECT
-        SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(wizard_data, '$.processImprovementDetails.timeSaved')) AS DECIMAL(15,2))) as total_hours
+        SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(wizard_data, '$.processImprovementDetails.expectedEfficiency')) AS DECIMAL(15,2))) as total_hours
       FROM change_requests
       WHERE JSON_EXTRACT(wizard_data, '$.changeReasons.processImprovement') = true
-        AND JSON_EXTRACT(wizard_data, '$.processImprovementDetails.timeSaved') IS NOT NULL
+        AND JSON_EXTRACT(wizard_data, '$.processImprovementDetails.expectedEfficiency') IS NOT NULL
     `) as any;
 
     // Get status counts

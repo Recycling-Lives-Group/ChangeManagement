@@ -65,6 +65,29 @@ export const EffortAssessment: React.FC = () => {
     setChanges(activeChanges);
   }, [storeChanges]);
 
+  // Auto-calculate on changes load
+  useEffect(() => {
+    if (changes.length > 0 && !hasCalculated) {
+      const changesWithEffort = changes
+        .map((change) => {
+          const effortScore = calculateEffortScore(change.wizardData || {});
+          return {
+            ...change,
+            effortScore,
+          };
+        })
+        .sort((a, b) => (b.effortScore || 0) - (a.effortScore || 0))
+        .map((change, index) => ({
+          ...change,
+          effortRank: index + 1,
+        }));
+
+      setSortedChanges(changesWithEffort);
+      setHasCalculated(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [changes]);
+
   const calculateEffortScore = (wizardData: any): number => {
     // Extract effort factors from wizard data
     const hoursEstimated = Number(wizardData.estimatedEffortHours) || 0;

@@ -20,6 +20,7 @@ import VotingSystem from './pages/VotingSystem';
 import BenefitAssessment from './pages/BenefitAssessment';
 import DependencyVisualization from './pages/DependencyVisualization';
 import BenefitScoringConfig from './pages/BenefitScoringConfig';
+import EffortScoringConfig from './pages/EffortScoringConfig';
 import ChangeRequestDebug from './pages/ChangeRequestDebug';
 
 function App() {
@@ -223,6 +224,19 @@ function App() {
               isAuthenticated ? (
                 <Layout>
                   <BenefitScoringConfig />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/effort-scoring-config"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <EffortScoringConfig />
                 </Layout>
               ) : (
                 <Navigate to="/login" />

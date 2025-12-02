@@ -129,7 +129,6 @@ export const BenefitAssessment: React.FC = () => {
     }
 
     if (Object.keys(benefitConfigs).length === 0) {
-      toast.error('Benefit configuration not loaded yet');
       return;
     }
 

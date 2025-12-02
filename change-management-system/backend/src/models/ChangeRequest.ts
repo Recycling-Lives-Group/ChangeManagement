@@ -208,6 +208,8 @@ export class ChangeRequest {
     scheduling_data?: any;
     risk_score?: number;
     risk_level?: string;
+    benefit_score?: number;
+    benefit_factors?: any;
   }): Promise<ChangeRequestWithUser> {
     const db = getDatabase();
 
@@ -235,6 +237,8 @@ export class ChangeRequest {
       submittedAt,
       data.risk_score || null,
       data.risk_level || null,
+      data.benefit_score || null,
+      data.benefit_factors ? JSON.stringify(data.benefit_factors) : null,
     ];
 
     console.log('SQL INSERT params:', params);
@@ -242,8 +246,8 @@ export class ChangeRequest {
 
     const [result] = await db.execute<ResultSetHeader>(
       `INSERT INTO change_requests
-        (request_number, title, description, requester_id, status, priority, wizard_data, scheduling_data, submitted_at, risk_score, risk_level)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (request_number, title, description, requester_id, status, priority, wizard_data, scheduling_data, submitted_at, risk_score, risk_level, benefit_score, benefit_factors)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       params
     );
 

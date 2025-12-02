@@ -671,41 +671,23 @@ export default function CABReview() {
                   </div>
                 )}
 
-                {/* Cast Decision Card */}
+                {/* Start Assessment Card */}
                 {(selectedChange.status === 'submitted' || selectedChange.status === 'under_review') && (
                   <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl">
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                      Make Decision
+                      CAB Assessment
                     </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Comment (Optional)
-                        </label>
-                        <textarea
-                          value={comment}
-                          onChange={(e) => setComment(e.target.value)}
-                          placeholder="Add your comments or reasoning..."
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                          rows={3}
-                        />
-                      </div>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => handleDecision(selectedChange.id, 'approve')}
-                          className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg font-semibold flex items-center justify-center gap-2"
-                        >
-                          <ThumbsUp className="w-5 h-5" />
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => handleDecision(selectedChange.id, 'reject')}
-                          className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg hover:from-red-600 hover:to-rose-700 transition-all shadow-md hover:shadow-lg font-semibold flex items-center justify-center gap-2"
-                        >
-                          <ThumbsDown className="w-5 h-5" />
-                          Reject
-                        </button>
-                      </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Complete a comprehensive assessment of this change request, including benefit, effort, and risk analysis.
+                    </p>
+                    <div className="space-y-3">
+                      <Link
+                        to={`/cab-review/${selectedChange.id}/assess`}
+                        className="block w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-center rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg font-semibold"
+                      >
+                        <CheckCircle size={16} className="inline mr-2" />
+                        Start Assessment Wizard
+                      </Link>
                       <Link
                         to={`/changes/${selectedChange.id}`}
                         className="block w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg font-semibold"

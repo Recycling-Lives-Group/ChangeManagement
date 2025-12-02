@@ -3,6 +3,8 @@ import { ChangeRequest } from '../models/ChangeRequest.js';
 import { User } from '../models/User.js';
 import type { AuthRequest } from '../middleware/auth.js';
 import { autoCalculateRisk } from '../utils/riskCalculator.js';
+import { autoCalculateBenefit } from '../utils/benefitCalculator.js';
+import { autoCalculateEffort } from '../utils/effortCalculator.js';
 
 // @desc    Get all change requests
 // @route   GET /api/changes
@@ -173,6 +175,9 @@ export const createChange = async (req: AuthRequest, res: Response) => {
     // Auto-calculate risk score from wizard data
     const riskAssessment = autoCalculateRisk(wizardData);
 
+    // Auto-calculate benefit score from wizard data
+    const benefitAssessment = autoCalculateBenefit(wizardData);
+
     const changeData = {
       title: title,
       description: description,
@@ -183,6 +188,8 @@ export const createChange = async (req: AuthRequest, res: Response) => {
       scheduling_data: req.body.schedulingData || null,
       risk_score: riskAssessment.score,
       risk_level: riskAssessment.level,
+      benefit_score: benefitAssessment.score,
+      benefit_factors: benefitAssessment.factors,
     };
 
     console.log('Creating change with data:', JSON.stringify(changeData, null, 2));
@@ -555,6 +562,158 @@ export const rejectChange = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error('rejectChange error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: error instanceof Error ? error.message : 'Server error',
+      },
+    });
+  }
+};
+
+// @desc    CAB approval with comprehensive assessment
+// @route   POST /api/changes/:id/cab-approve
+// @access  Private (CAB members, managers, admins)
+export const cabApproveChange = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Not authorized',
+        },
+      });
+    }
+
+    const { cabAssessment, decision, comments } = req.body;
+
+    if (!decision || (decision !== 'approve' && decision !== 'reject')) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Decision must be either "approve" or "reject"',
+        },
+      });
+    }
+
+    const change = await ChangeRequest.findById(parseInt(req.params.id));
+
+    if (!change) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Change request not found',
+        },
+      });
+    }
+
+    const db = (await import('../config/database.js')).getDatabase();
+
+    // Merge original wizard data with CAB assessment
+    const originalData = change.wizard_data || {};
+    const assessmentData = { ...originalData };
+
+    // Apply CAB revisions if provided
+    if (cabAssessment) {
+      Object.keys(cabAssessment).forEach(key => {
+        if (cabAssessment[key]?.cabRevised !== undefined) {
+          assessmentData[key] = cabAssessment[key].cabRevised;
+        } else if (cabAssessment[key]?.original !== undefined) {
+          assessmentData[key] = cabAssessment[key].original;
+        }
+      });
+    }
+
+    let benefitScore = null;
+    let benefitFactors = null;
+    let effortScore = null;
+    let effortFactors = null;
+    let riskScore = null;
+    let riskLevel = null;
+
+    // Only calculate scores if approving
+    if (decision === 'approve') {
+      // Calculate benefit score using CAB-assessed data
+      const benefitResult = autoCalculateBenefit(assessmentData);
+      benefitScore = benefitResult.score;
+      benefitFactors = benefitResult.factors;
+
+      // Calculate effort score using CAB-assessed data
+      const effortResult = autoCalculateEffort(assessmentData);
+      effortScore = effortResult.score;
+      effortFactors = effortResult.factors;
+
+      // Calculate risk score using CAB-assessed data
+      const riskResult = autoCalculateRisk(assessmentData);
+      riskScore = riskResult.score;
+      riskLevel = riskResult.level;
+    }
+
+    // Create CAB review record with assessment data
+    await db.execute(
+      `INSERT INTO cab_reviews (change_request_id, reviewer_id, vote, comments, review_data, reviewed_at)
+       VALUES (?, ?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE vote = ?, comments = ?, review_data = ?, reviewed_at = NOW()`,
+      [
+        change.id,
+        req.user.id,
+        decision === 'approve' ? 'approved' : 'rejected',
+        comments || null,
+        JSON.stringify(cabAssessment || {}),
+        decision === 'approve' ? 'approved' : 'rejected',
+        comments || null,
+        JSON.stringify(cabAssessment || {}),
+      ]
+    );
+
+    // Add comment if provided
+    if (comments) {
+      await db.execute(
+        `INSERT INTO change_comments (change_request_id, user_id, comment, is_internal)
+         VALUES (?, ?, ?, FALSE)`,
+        [change.id, req.user.id, comments]
+      );
+    }
+
+    // Update change request with scores and status
+    const updateData: any = {
+      status: decision === 'approve' ? 'approved' : 'rejected',
+    };
+
+    if (decision === 'approve') {
+      updateData.benefit_score = benefitScore;
+      updateData.benefit_factors = benefitFactors;
+      updateData.benefit_calculated_at = new Date();
+      updateData.effort_score = effortScore;
+      updateData.effort_factors = effortFactors;
+      updateData.effort_calculated_at = new Date();
+      updateData.risk_score = riskScore;
+      updateData.risk_level = riskLevel;
+      updateData.risk_calculated_at = new Date();
+    }
+
+    const updatedChange = await ChangeRequest.update(change.id, updateData);
+
+    if (!updatedChange) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Change request not found',
+        },
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: ChangeRequest.formatChange(updatedChange),
+    });
+  } catch (error) {
+    console.error('cabApproveChange error:', error);
     res.status(500).json({
       success: false,
       error: {

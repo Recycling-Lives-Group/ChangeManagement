@@ -9,6 +9,7 @@ import ChangeForm from './pages/ChangeForm';
 import ChangeDetail from './pages/ChangeDetailFull';
 import AdminDashboard from './pages/AdminDashboard';
 import CABReview from './pages/CABReview';
+import CABReviewWizard from './pages/CABReviewWizard';
 import Layout from './components/common/Layout';
 
 // Phase 2 Features
@@ -117,6 +118,19 @@ function App() {
               isAuthenticated ? (
                 <Layout>
                   <CABReview />
+                </Layout>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route
+            path="/cab-review/:id/assess"
+            element={
+              isAuthenticated ? (
+                <Layout>
+                  <CABReviewWizard />
                 </Layout>
               ) : (
                 <Navigate to="/login" />

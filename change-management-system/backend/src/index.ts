@@ -7,6 +7,7 @@ import { connectDatabase } from './config/database.js';
 import authRoutes from './routes/auth.js';
 import changeRoutes from './routes/changes.js';
 import benefitConfigRoutes from './routes/benefitConfig.js';
+import effortConfigRoutes from './routes/effortConfig.js';
 import metricsRoutes from './routes/metrics.js';
 import diagramRoutes from './routes/diagram.js';
 
@@ -31,6 +32,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/changes', changeRoutes);
 app.use('/api/benefit-config', benefitConfigRoutes);
+app.use('/api/effort-config', effortConfigRoutes);
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/diagram', diagramRoutes);
 

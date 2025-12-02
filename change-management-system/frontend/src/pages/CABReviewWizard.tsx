@@ -417,6 +417,37 @@ export default function CABReviewWizard() {
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Estimated Hours
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={originalData?.estimatedEffortHours || 0}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 dark:text-white"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              From original change request (read-only)
+            </p>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Estimated Cost (£)
+            </label>
+            <input
+              type="text"
+              value={originalData?.estimatedCost || 0}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 dark:text-white"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              From original change request (read-only)
+            </p>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Team Size (Number of People)
             </label>
             <input
@@ -635,6 +666,18 @@ export default function CABReviewWizard() {
 
           <div className="text-sm">
             <span className="font-medium">Impacted Users:</span> {cabAssessment.impactedUsers}
+          </div>
+
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+            <h5 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Effort Factors</h5>
+          </div>
+
+          <div className="text-sm">
+            <span className="font-medium">Estimated Hours:</span> {originalData?.estimatedEffortHours || 0} hours
+          </div>
+
+          <div className="text-sm">
+            <span className="font-medium">Estimated Cost:</span> £{originalData?.estimatedCost || 0}
           </div>
 
           <div className="text-sm">

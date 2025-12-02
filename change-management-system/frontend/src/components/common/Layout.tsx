@@ -149,20 +149,20 @@ export default function Layout({ children }: LayoutProps) {
             </li>
             <li>
               <Link
-                to="/effort-assessment"
-                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <Calculator size={20} />
-                <span className="ml-3">Effort Assessment</span>
-              </Link>
-            </li>
-            <li>
-              <Link
                 to="/benefit-assessment"
                 className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 <Zap size={20} />
                 <span className="ml-3">Benefit Assessment</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/effort-assessment"
+                className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Calculator size={20} />
+                <span className="ml-3">Effort Assessment</span>
               </Link>
             </li>
             <li>

@@ -174,6 +174,19 @@ export default function ChangeForm() {
     }
   };
 
+  // Prevent Enter key from submitting form on steps 1-3
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key === 'Enter' && currentStep < 4) {
+      // Allow Enter in textareas
+      if ((e.target as HTMLElement).tagName === 'TEXTAREA') {
+        return;
+      }
+      e.preventDefault();
+      // Optionally trigger next step
+      nextStep();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 px-4">
       <div className="max-w-5xl mx-auto">
@@ -244,7 +257,7 @@ export default function ChangeForm() {
           </div>
 
           {/* Form Content */}
-          <form onSubmit={handleSubmit(onSubmit)} className="px-8 py-8">
+          <form onSubmit={handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="px-8 py-8">
             <div className="min-h-[500px]">
               {/* Step 1: Basic Information */}
               {currentStep === 1 && (

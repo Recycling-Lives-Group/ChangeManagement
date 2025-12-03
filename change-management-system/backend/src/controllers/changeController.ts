@@ -613,19 +613,77 @@ export const cabApproveChange = async (req: AuthRequest, res: Response) => {
 
     const db = (await import('../config/database.js')).getDatabase();
 
-    // Merge original wizard data with CAB assessment
+    // Keep original wizard data unchanged (for lessons learned reference)
     const originalData = change.wizard_data || {};
+
+    // Use CAB assessment data for scoring calculations
+    // CAB assessment contains the reviewed/revised values
     const assessmentData = { ...originalData };
 
-    // Apply CAB revisions if provided
+    // Apply CAB assessment values if provided
     if (cabAssessment) {
-      Object.keys(cabAssessment).forEach(key => {
-        if (cabAssessment[key]?.cabRevised !== undefined) {
-          assessmentData[key] = cabAssessment[key].cabRevised;
-        } else if (cabAssessment[key]?.original !== undefined) {
-          assessmentData[key] = cabAssessment[key].original;
-        }
-      });
+      // Initialize changeReasons if it doesn't exist
+      if (!assessmentData.changeReasons) {
+        assessmentData.changeReasons = {};
+      }
+
+      // Merge benefit factors (revenueImprovement, costSavings, etc.)
+      if (cabAssessment.revenueImprovement) {
+        assessmentData.changeReasons.revenueImprovement = true;
+        assessmentData.revenueDetails = {
+          expectedRevenue: cabAssessment.revenueImprovement.rawValue,
+          revenueTimeline: cabAssessment.revenueImprovement.rawTimeline,
+          revenueDescription: cabAssessment.revenueImprovement.explanation
+        };
+      }
+      if (cabAssessment.costSavings) {
+        assessmentData.changeReasons.costReduction = true;
+        assessmentData.costReductionDetails = {
+          expectedSavings: cabAssessment.costSavings.rawValue,
+          savingsTimeline: cabAssessment.costSavings.rawTimeline,
+          savingsDescription: cabAssessment.costSavings.explanation
+        };
+      }
+      if (cabAssessment.customerImpact) {
+        assessmentData.changeReasons.customerImpact = true;
+        assessmentData.customerImpactDetails = {
+          customersAffected: cabAssessment.customerImpact.rawValue,
+          impactTimeline: cabAssessment.customerImpact.rawTimeline,
+          impactDescription: cabAssessment.customerImpact.explanation
+        };
+      }
+      if (cabAssessment.processImprovement) {
+        assessmentData.changeReasons.processImprovement = true;
+        assessmentData.processImprovementDetails = {
+          expectedEfficiency: cabAssessment.processImprovement.rawValue,
+          improvementTimeline: cabAssessment.processImprovement.rawTimeline,
+          processDescription: cabAssessment.processImprovement.explanation
+        };
+      }
+      if (cabAssessment.internalQoL) {
+        assessmentData.changeReasons.internalQoL = true;
+        assessmentData.internalQoLDetails = {
+          usersAffected: cabAssessment.internalQoL.rawValue,
+          qolTimeline: cabAssessment.internalQoL.rawTimeline,
+          expectedImprovements: cabAssessment.internalQoL.explanation
+        };
+      }
+
+      // Merge effort factors
+      if (cabAssessment.hoursEstimated !== undefined) assessmentData.estimatedEffortHours = cabAssessment.hoursEstimated;
+      if (cabAssessment.costEstimated !== undefined) assessmentData.estimatedCost = cabAssessment.costEstimated;
+      if (cabAssessment.resourceRequirement !== undefined) assessmentData.resourceRequirement = cabAssessment.resourceRequirement;
+      if (cabAssessment.complexity !== undefined) assessmentData.complexity = cabAssessment.complexity;
+      if (cabAssessment.systemsAffected !== undefined) assessmentData.systemsAffectedCount = cabAssessment.systemsAffected;
+      if (cabAssessment.testingRequired !== undefined) assessmentData.testingRequired = cabAssessment.testingRequired;
+      if (cabAssessment.documentationRequired !== undefined) assessmentData.documentationRequired = cabAssessment.documentationRequired;
+      if (cabAssessment.urgency !== undefined) assessmentData.urgency = cabAssessment.urgency;
+
+      // Merge other assessment data
+      if (cabAssessment.impactedUsers !== undefined) assessmentData.impactedUsers = cabAssessment.impactedUsers;
+      if (cabAssessment.systemsAffectedList !== undefined) assessmentData.systemsAffected = cabAssessment.systemsAffectedList;
+      if (cabAssessment.dependencies !== undefined) assessmentData.dependencies = cabAssessment.dependencies;
+      if (cabAssessment.strategicAlignment !== undefined) assessmentData.strategicAlignment = cabAssessment.strategicAlignment;
     }
 
     let benefitScore = null;
@@ -637,17 +695,17 @@ export const cabApproveChange = async (req: AuthRequest, res: Response) => {
 
     // Only calculate scores if approving
     if (decision === 'approve') {
-      // Calculate benefit score using CAB-assessed data
+      // Calculate benefit score using CAB-assessed data (not original user input)
       const benefitResult = autoCalculateBenefit(assessmentData);
       benefitScore = benefitResult.score;
       benefitFactors = benefitResult.factors;
 
-      // Calculate effort score using CAB-assessed data
+      // Calculate effort score using CAB-assessed data (not original user input)
       const effortResult = autoCalculateEffort(assessmentData);
       effortScore = effortResult.score;
       effortFactors = effortResult.factors;
 
-      // Calculate risk score using CAB-assessed data
+      // Calculate risk score using CAB-assessed data (not original user input)
       const riskResult = autoCalculateRisk(assessmentData);
       riskScore = riskResult.score;
       riskLevel = riskResult.level;
@@ -682,6 +740,7 @@ export const cabApproveChange = async (req: AuthRequest, res: Response) => {
     // Update change request with scores and status
     const updateData: any = {
       status: decision === 'approve' ? 'approved' : 'rejected',
+      wizard_data: assessmentData, // Save CAB-revised values back to wizard_data
     };
 
     if (decision === 'approve') {
@@ -795,6 +854,91 @@ export const updateBenefitScore = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error('updateBenefitScore error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: error instanceof Error ? error.message : 'Server error',
+      },
+    });
+  }
+};
+
+// @desc    Calculate and update effort score for a change request
+// @route   POST /api/changes/:id/effort-score
+// @access  Private
+export const updateEffortScore = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Not authorized',
+        },
+      });
+    }
+
+    const change = await ChangeRequest.findById(parseInt(req.params.id));
+
+    if (!change) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Change request not found',
+        },
+      });
+    }
+
+    // Parse wizard_data
+    let wizardData = change.wizard_data;
+    if (typeof wizardData === 'string') {
+      try {
+        wizardData = JSON.parse(wizardData);
+      } catch (e) {
+        wizardData = {};
+      }
+    }
+
+    // Calculate effort score from wizard_data
+    const { autoCalculateEffort } = await import('../utils/effortCalculator.js');
+    const effortResult = autoCalculateEffort(wizardData);
+    const effortScore = effortResult.score;
+    const effortFactors = effortResult.factors;
+
+    const db = (await import('../config/database.js')).getDatabase();
+
+    // Update effort score and factors
+    await db.execute(
+      `UPDATE change_requests
+       SET effort_score = ?,
+           effort_factors = ?,
+           effort_calculated_at = NOW(),
+           updated_at = NOW()
+       WHERE id = ?`,
+      [effortScore, JSON.stringify(effortFactors), change.id]
+    );
+
+    // Fetch updated change
+    const updatedChange = await ChangeRequest.findById(change.id);
+
+    if (!updatedChange) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Change request not found after update',
+        },
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: ChangeRequest.formatChange(updatedChange),
+    });
+  } catch (error) {
+    console.error('updateEffortScore error:', error);
     res.status(500).json({
       success: false,
       error: {

@@ -9,6 +9,7 @@ import {
   rejectChange,
   cabApproveChange,
   updateBenefitScore,
+  updateEffortScore,
 } from '../controllers/changeController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
@@ -23,4 +24,5 @@ router.post('/:id/reject', protect, authorize('cab_member', 'manager', 'admin'),
 router.post('/:id/cab-approve', protect, authorize('cab_member', 'manager', 'admin'), cabApproveChange);
 
 router.put('/:id/benefit-score', protect, updateBenefitScore);
+router.post('/:id/effort-score', protect, updateEffortScore);
 export default router;

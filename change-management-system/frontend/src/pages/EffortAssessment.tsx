@@ -160,24 +160,50 @@ export const EffortAssessment: React.FC = () => {
     return 5;
   };
 
-  const calculateEffort = () => {
-    const changesWithEffort = changes
-      .map((change) => {
-        const effortScore = calculateEffortScore(change.wizardData || {});
-        return {
-          ...change,
-          effortScore,
-        };
-      })
-      .sort((a, b) => (b.effortScore || 0) - (a.effortScore || 0))
-      .map((change, index) => ({
-        ...change,
-        effortRank: index + 1,
-      }));
+  const calculateEffort = async () => {
+    try {
+      const token = localStorage.getItem('token');
 
-    setSortedChanges(changesWithEffort);
-    setHasCalculated(true);
-    toast.success('Effort scores calculated successfully!');
+      // Call backend API to calculate effort with detailed factors for all changes
+      const calculatedChanges = await Promise.all(
+        changes.map(async (change) => {
+          try {
+            const response = await axios.post(
+              `${API_URL}/changes/${change.id}/effort-score`,
+              {},
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+
+            // Return the updated change from the response
+            return response.data.data;
+          } catch (error) {
+            console.error(`Failed to calculate effort for ${change.id}:`, error);
+            // Return original change if calculation fails
+            return change;
+          }
+        })
+      );
+
+      // Sort by effort score and add ranks
+      const sortedWithRanks = calculatedChanges
+        .sort((a, b) => (b.effortScore || 0) - (a.effortScore || 0))
+        .map((change, index) => ({
+          ...change,
+          effortRank: index + 1,
+        }));
+
+      setSortedChanges(sortedWithRanks);
+      setHasCalculated(true);
+      toast.success('Effort scores calculated successfully!');
+
+      // Refresh to get latest data
+      await fetchChanges();
+    } catch (error) {
+      console.error('Failed to calculate effort scores:', error);
+      toast.error('Failed to calculate effort scores');
+    }
   };
 
   const saveToDatabase = async () => {
@@ -189,21 +215,25 @@ export const EffortAssessment: React.FC = () => {
     setIsSaving(true);
     try {
       const token = localStorage.getItem('token');
-      const updates = sortedChanges.map((change) => ({
-        id: change.id,
-        effort_score: change.effortScore,
-        effort_calculated_at: new Date().toISOString(),
-      }));
 
+      // Call backend API to calculate effort with detailed factors
       await Promise.all(
-        updates.map((update) =>
-          axios.put(`${API_URL}/changes/${update.id}`, update, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-        )
+        sortedChanges.map(async (change) => {
+          try {
+            await axios.post(
+              `${API_URL}/changes/${change.id}/effort-score`,
+              {},
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+          } catch (error) {
+            console.error(`Failed to calculate effort for ${change.id}:`, error);
+          }
+        })
       );
 
-      toast.success(`Saved effort scores for ${updates.length} change requests!`);
+      toast.success(`Calculated and saved effort scores for ${sortedChanges.length} change requests!`);
       await fetchChanges();
     } catch (error) {
       console.error('Failed to save effort scores:', error);
@@ -250,13 +280,13 @@ export const EffortAssessment: React.FC = () => {
       label: 'Cost Estimated',
       description: 'Estimated financial cost in £',
     },
-    teamSize: {
-      label: 'Team Size',
-      description: 'Number of people required',
+    resourceRequirement: {
+      label: 'Resource Requirement',
+      description: 'Number of people/resources required (1-10 scale)',
     },
     complexity: {
       label: 'Complexity',
-      description: 'Technical complexity (1-5 scale)',
+      description: 'Technical complexity (1-10 scale)',
     },
     systemsAffected: {
       label: 'Systems Affected',
@@ -264,11 +294,15 @@ export const EffortAssessment: React.FC = () => {
     },
     testingRequired: {
       label: 'Testing Required',
-      description: 'Level of testing needed (1-5 scale)',
+      description: 'Level of testing needed (1-10 scale)',
     },
     documentationRequired: {
       label: 'Documentation Required',
-      description: 'Level of documentation needed (1-5 scale)',
+      description: 'Level of documentation needed (1-10 scale)',
+    },
+    urgency: {
+      label: 'Urgency',
+      description: 'Time sensitivity of the change (1-10 scale)',
     },
   };
 
@@ -441,39 +475,93 @@ export const EffortAssessment: React.FC = () => {
                 </tr>
               ) : (
                 sortedChanges.map((change) => (
-                  <tr key={change.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-2xl font-bold text-gray-400 dark:text-gray-600">
-                        #{change.effortRank}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {change.title}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {change.requestNumber}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {change.effortScore}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getEffortColor(change.effortScore || 0)}`}>
-                        {getEffortLevel(change.effortScore || 0)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <Link
-                        to={`/changes/${change.id}`}
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                      >
-                        View Details →
-                      </Link>
-                    </td>
-                  </tr>
+                  <React.Fragment key={change.id}>
+                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-2xl font-bold text-gray-400 dark:text-gray-600">
+                          #{change.effortRank}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {change.title}
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {change.requestNumber}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {change.effortScore}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getEffortColor(change.effortScore || 0)}`}>
+                          {getEffortLevel(change.effortScore || 0)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <Link
+                          to={`/changes/${change.id}`}
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                        >
+                          View Details →
+                        </Link>
+                      </td>
+                    </tr>
+                    {change.effortFactors && (
+                      <tr className="bg-gray-50 dark:bg-gray-900">
+                        <td colSpan={5} className="px-6 py-3">
+                          <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                            Effort Factor Scores:
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {Object.entries(change.effortFactors).map(([key, value]) => {
+                              if (!value) return null;
+                              const { label } = weightLabels[key] || { label: key };
+
+                              // Extract score details
+                              let rawScore = 'N/A';
+                              let weightedScore = 'N/A';
+
+                              if (typeof value === 'object') {
+                                // Try to get the raw score - check combinedScore first, then score
+                                if ('combinedScore' in value) {
+                                  rawScore = value.combinedScore?.toFixed(1) || 'N/A';
+                                } else if ('score' in value) {
+                                  rawScore = value.score?.toFixed(1) || 'N/A';
+                                }
+
+                                // Get weighted score
+                                if ('weightedScore' in value) {
+                                  weightedScore = value.weightedScore?.toFixed(1) || 'N/A';
+                                }
+                              }
+
+                              return (
+                                <div
+                                  key={key}
+                                  className="flex flex-col text-xs p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700"
+                                >
+                                  <span className="text-gray-600 dark:text-gray-400 mb-1">
+                                    {label}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-gray-500 dark:text-gray-400">
+                                      Score: <span className="font-semibold text-gray-900 dark:text-white">{rawScore}</span>
+                                    </span>
+                                    <span className="text-gray-500 dark:text-gray-400">
+                                      Weighted: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{weightedScore}</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))
               )}
             </tbody>

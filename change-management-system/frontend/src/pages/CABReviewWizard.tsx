@@ -70,6 +70,7 @@ export default function CABReviewWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [change, setChange] = useState<any>(null);
   const [originalData, setOriginalData] = useState<any>(null);
+  const [originalBenefitValues, setOriginalBenefitValues] = useState<Record<string, BenefitFactor>>({});
   const [cabAssessment, setCabAssessment] = useState<CABAssessment>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -90,50 +91,61 @@ export default function CABReviewWizard() {
 
   const initializeCabAssessment = (wizardData: any) => {
     const assessment: CABAssessment = {};
+    const originalValues: Record<string, BenefitFactor> = {};
 
     // Revenue Improvement
     if (wizardData.changeReasons?.revenueImprovement && wizardData.revenueDetails) {
-      assessment.revenueImprovement = {
+      const revValue = {
         rawValue: wizardData.revenueDetails.expectedRevenue || '',
         rawTimeline: parseInt(wizardData.revenueDetails.revenueTimeline || '12'),
         explanation: wizardData.revenueDetails.revenueDescription || '',
       };
+      assessment.revenueImprovement = { ...revValue };
+      originalValues.revenueImprovement = { ...revValue };
     }
 
     // Cost Savings
     if (wizardData.changeReasons?.costReduction && wizardData.costReductionDetails) {
-      assessment.costSavings = {
+      const costValue = {
         rawValue: wizardData.costReductionDetails.expectedSavings || '',
         rawTimeline: parseInt(wizardData.costReductionDetails.savingsTimeline || '12'),
         explanation: wizardData.costReductionDetails.savingsDescription || '',
       };
+      assessment.costSavings = { ...costValue };
+      originalValues.costSavings = { ...costValue };
     }
 
     // Customer Impact
     if (wizardData.changeReasons?.customerImpact && wizardData.customerImpactDetails) {
-      assessment.customerImpact = {
+      const custValue = {
         rawValue: wizardData.customerImpactDetails.customersAffected || '',
         rawTimeline: parseInt(wizardData.customerImpactDetails.impactTimeline || '12'),
         explanation: wizardData.customerImpactDetails.impactDescription || '',
       };
+      assessment.customerImpact = { ...custValue };
+      originalValues.customerImpact = { ...custValue };
     }
 
     // Process Improvement
     if (wizardData.changeReasons?.processImprovement && wizardData.processImprovementDetails) {
-      assessment.processImprovement = {
+      const procValue = {
         rawValue: wizardData.processImprovementDetails.expectedEfficiency || '',
         rawTimeline: parseInt(wizardData.processImprovementDetails.improvementTimeline || '12'),
         explanation: wizardData.processImprovementDetails.processDescription || '',
       };
+      assessment.processImprovement = { ...procValue };
+      originalValues.processImprovement = { ...procValue };
     }
 
     // Internal QoL
     if (wizardData.changeReasons?.internalQoL && wizardData.internalQoLDetails) {
-      assessment.internalQoL = {
+      const qolValue = {
         rawValue: wizardData.internalQoLDetails.usersAffected || '',
         rawTimeline: parseInt(wizardData.internalQoLDetails.qolTimeline || '12'),
         explanation: wizardData.internalQoLDetails.expectedImprovements || '',
       };
+      assessment.internalQoL = { ...qolValue };
+      originalValues.internalQoL = { ...qolValue };
     }
 
     // Impact
@@ -161,6 +173,7 @@ export default function CABReviewWizard() {
     assessment.strategicAlignment = 5;
 
     setCabAssessment(assessment);
+    setOriginalBenefitValues(originalValues);
   };
 
   const steps = [
@@ -192,9 +205,7 @@ export default function CABReviewWizard() {
     }] : []),
     // Always include these - Benefits first, then Effort
     { title: 'Effort Assessment', icon: Clock, field: 'effort' },
-    { title: 'Impact & Dependencies', icon: Server, field: 'impact' },
     { title: 'Risk Assessment', icon: AlertTriangle, field: 'risk' },
-    { title: 'Strategic Alignment', icon: Target, field: 'strategic' },
     { title: 'Final Review', icon: CheckCircle, field: 'review' },
   ];
 
@@ -272,12 +283,12 @@ export default function CABReviewWizard() {
 
   const renderBenefitStep = (field: string) => {
     const factor = cabAssessment[field as keyof CABAssessment] as BenefitFactor | undefined;
-    const originalFactor = originalData?.[field];
+    const originalFactor = originalBenefitValues[field];
 
     const getFieldConfig = () => {
       switch (field) {
         case 'revenueImprovement':
-          return { label: 'Revenue Improvement', unit: '£', valueLabel: 'Annual Revenue' };
+          return { label: 'Revenue Improvement', unit: '£', valueLabel: 'Annual Revenue Improvement' };
         case 'costSavings':
           return { label: 'Cost Savings', unit: '£', valueLabel: 'Annual Savings' };
         case 'customerImpact':
@@ -297,12 +308,12 @@ export default function CABReviewWizard() {
       <div className="space-y-6">
         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
           <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
-            Original Requester Input
+            Original Requester Input (Read-Only)
           </h3>
           <div className="space-y-2 text-sm">
-            <p><span className="font-medium">Value:</span> {config.unit}{factor?.rawValue}</p>
-            <p><span className="font-medium">Timeline:</span> {factor?.rawTimeline} months</p>
-            <p><span className="font-medium">Explanation:</span> {factor?.explanation}</p>
+            <p><span className="font-medium">Value:</span> {config.unit}{originalFactor?.rawValue || 'N/A'}</p>
+            <p><span className="font-medium">Timeline:</span> {originalFactor?.rawTimeline || 'N/A'} months</p>
+            <p><span className="font-medium">Explanation:</span> {originalFactor?.explanation || 'N/A'}</p>
           </div>
         </div>
 
@@ -381,34 +392,59 @@ export default function CABReviewWizard() {
           </p>
         </div>
 
-        {/* Hours Estimated (Read-only from original) */}
+        {/* Cost Estimated */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            1. Hours Estimated
-            <InfoTooltip text="Total estimated hours required to implement this change. This value is from the original change request and cannot be modified here." />
+            1. Cost Estimated (£)
+            <InfoTooltip text="Total estimated financial cost for implementing this change. This includes resource costs, infrastructure, licensing, etc. Review and adjust if needed." />
+          </label>
+
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800 mb-3">
+            <p className="text-xs text-blue-800 dark:text-blue-200 mb-1 font-medium">Original Requester Estimate (Read-Only)</p>
+            <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+              £{originalData?.estimatedCost ? parseFloat(originalData.estimatedCost.toString().replace(/[£,]/g, '')).toLocaleString() : '0'}
+            </p>
+          </div>
+
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            CAB Assessment - Do you agree with this estimate?
+          </label>
+          <input
+            type="number"
+            value={cabAssessment.costEstimated || 0}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              costEstimated: parseFloat(e.target.value) || 0
+            })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter cost without £ symbol (e.g., 5000)</p>
+        </div>
+
+        {/* Hours Estimated */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            2. Hours Estimated
+            <InfoTooltip text="Total estimated hours required to implement this change. Review the original estimate and adjust if needed based on CAB assessment." />
+          </label>
+
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800 mb-3">
+            <p className="text-xs text-blue-800 dark:text-blue-200 mb-1 font-medium">Original Requester Estimate (Read-Only)</p>
+            <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">{originalData?.estimatedEffortHours || 0} hours</p>
+          </div>
+
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            CAB Assessment - Do you agree with this estimate?
           </label>
           <input
             type="number"
             value={cabAssessment.hoursEstimated || 0}
-            readOnly
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 dark:text-white"
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              hoursEstimated: parseFloat(e.target.value) || 0
+            })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white"
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">From original change request (read-only)</p>
-        </div>
-
-        {/* Cost Estimated (Read-only from original) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            2. Cost Estimated (£)
-            <InfoTooltip text="Total estimated financial cost for implementing this change. This includes resource costs, infrastructure, licensing, etc. From the original change request." />
-          </label>
-          <input
-            type="text"
-            value={cabAssessment.costEstimated ? `£${cabAssessment.costEstimated.toLocaleString()}` : '£0'}
-            readOnly
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 dark:text-white"
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">From original change request (read-only)</p>
         </div>
 
         {/* Resource Requirement (1-10) */}
@@ -435,97 +471,10 @@ export default function CABReviewWizard() {
           </div>
         </div>
 
-        {/* Complexity (1-10) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            4. Complexity: <span className="font-bold text-indigo-600">{cabAssessment.complexity || 5}/10</span>
-            <InfoTooltip text="Technical complexity of the change. Consider: code complexity, architectural changes, integration points, data migrations, and technical challenges. 1 = Simple change, 10 = Highly complex change." />
-          </label>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={cabAssessment.complexity || 5}
-            onChange={(e) => setCabAssessment({
-              ...cabAssessment,
-              complexity: parseInt(e.target.value)
-            })}
-            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
-          />
-          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-            <span>1 - Simple</span>
-            <span>5 - Moderate</span>
-            <span>10 - Highly Complex</span>
-          </div>
-        </div>
-
-        {/* Systems Affected (Count - calculated from list) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            5. Systems Affected: <span className="font-bold text-indigo-600">{cabAssessment.systemsAffected || 0}</span>
-            <InfoTooltip text="Number of different systems/applications that will be impacted by this change. This is calculated from the systems list in Impact & Dependencies step." />
-          </label>
-          <input
-            type="number"
-            value={cabAssessment.systemsAffected || 0}
-            readOnly
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 dark:text-white"
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Calculated from systems list (read-only)</p>
-        </div>
-
-        {/* Testing Required (1-10) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            6. Testing Required: <span className="font-bold text-indigo-600">{cabAssessment.testingRequired || 5}/10</span>
-            <InfoTooltip text="Level of testing needed for this change. Consider: unit tests, integration tests, UAT, performance testing, security testing, and regression testing. 1 = Minimal testing, 10 = Extensive testing required." />
-          </label>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={cabAssessment.testingRequired || 5}
-            onChange={(e) => setCabAssessment({
-              ...cabAssessment,
-              testingRequired: parseInt(e.target.value)
-            })}
-            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
-          />
-          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-            <span>1 - Minimal</span>
-            <span>5 - Moderate</span>
-            <span>10 - Extensive</span>
-          </div>
-        </div>
-
-        {/* Documentation Required (1-10) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            7. Documentation Required: <span className="font-bold text-indigo-600">{cabAssessment.documentationRequired || 5}/10</span>
-            <InfoTooltip text="Level of documentation needed. Consider: technical docs, user guides, API documentation, runbooks, training materials, and knowledge transfer. 1 = Minimal docs, 10 = Extensive documentation." />
-          </label>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={cabAssessment.documentationRequired || 5}
-            onChange={(e) => setCabAssessment({
-              ...cabAssessment,
-              documentationRequired: parseInt(e.target.value)
-            })}
-            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
-          />
-          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-            <span>1 - Minimal</span>
-            <span>5 - Moderate</span>
-            <span>10 - Extensive</span>
-          </div>
-        </div>
-
         {/* Urgency (1-10) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            8. Urgency: <span className="font-bold text-indigo-600">{cabAssessment.urgency || 5}/10</span>
+            4. Urgency: <span className="font-bold text-indigo-600">{cabAssessment.urgency || 5}/10</span>
             <InfoTooltip text="Time sensitivity of this change. Consider: deadlines, business impact of delays, regulatory requirements, competitive pressure, and customer commitments. 1 = Can wait, 10 = Urgent/Critical." />
           </label>
           <input
@@ -536,6 +485,30 @@ export default function CABReviewWizard() {
             onChange={(e) => setCabAssessment({
               ...cabAssessment,
               urgency: parseInt(e.target.value)
+            })}
+            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
+          />
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span>1 - Low</span>
+            <span>5 - Moderate</span>
+            <span>10 - Critical</span>
+          </div>
+        </div>
+
+        {/* Strategic Alignment (1-10) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            5. Strategic Alignment: <span className="font-bold text-indigo-600">{cabAssessment.strategicAlignment || 5}/10</span>
+            <InfoTooltip text="How well does this change align with organizational strategy and goals? Consider: strategic priorities, long-term vision, competitive advantage, and business objectives. 1 = Low alignment, 10 = Critical strategic priority." />
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={cabAssessment.strategicAlignment || 5}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              strategicAlignment: parseInt(e.target.value)
             })}
             className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
           />
@@ -713,62 +686,145 @@ export default function CABReviewWizard() {
   };
 
   const renderRiskStep = () => {
-    const RiskSlider = ({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) => (
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          {label}: <span className="font-bold">{value}/5</span>
-        </label>
-        <input
-          type="range"
-          min="1"
-          max="5"
-          value={value}
-          onChange={(e) => onChange(parseInt(e.target.value))}
-          className="w-full"
-        />
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>Low</span>
-          <span>Medium</span>
-          <span>High</span>
+    const InfoTooltip = ({ text }: { text: string }) => (
+      <div className="group relative inline-block ml-2">
+        <AlertTriangle className="w-4 h-4 text-blue-500 cursor-help inline" />
+        <div className="hidden group-hover:block absolute z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg -top-2 left-6 shadow-lg">
+          {text}
         </div>
       </div>
     );
 
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Risk Assessment
-        </h3>
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800 mb-6">
+          <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
+            Risk Assessment
+          </h3>
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            Assess the risks and technical requirements for this change. Hover over the info icons for explanations.
+          </p>
+        </div>
 
-        <RiskSlider
-          label="Technical Risk"
-          value={cabAssessment.technicalRisk || 3}
-          onChange={(v) => setCabAssessment({ ...cabAssessment, technicalRisk: v })}
-        />
+        {/* Business Risk (1-10) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            1. Business Risk: <span className="font-bold text-indigo-600">{cabAssessment.businessRisk || 5}/10</span>
+            <InfoTooltip text="Assess the business risk if this change fails or causes issues. Consider: revenue impact, customer satisfaction, regulatory compliance, reputation. 1 = Minimal business impact, 10 = Critical business impact." />
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={cabAssessment.businessRisk || 5}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              businessRisk: parseInt(e.target.value)
+            })}
+            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
+          />
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span>1 - Minimal Impact</span>
+            <span>5 - Moderate Impact</span>
+            <span>10 - Critical Impact</span>
+          </div>
+        </div>
 
-        <RiskSlider
-          label="Business Risk"
-          value={cabAssessment.businessRisk || 3}
-          onChange={(v) => setCabAssessment({ ...cabAssessment, businessRisk: v })}
-        />
+        {/* Complexity (1-10) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            2. Complexity: <span className="font-bold text-indigo-600">{cabAssessment.complexity || 5}/10</span>
+            <InfoTooltip text="Technical complexity of the change. Consider: code complexity, architectural changes, integration points, data migrations, and technical challenges. 1 = Simple change, 10 = Highly complex change." />
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={cabAssessment.complexity || 5}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              complexity: parseInt(e.target.value)
+            })}
+            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
+          />
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span>1 - Simple</span>
+            <span>5 - Moderate</span>
+            <span>10 - Highly Complex</span>
+          </div>
+        </div>
 
-        <RiskSlider
-          label="Complexity"
-          value={cabAssessment.complexity || 3}
-          onChange={(v) => setCabAssessment({ ...cabAssessment, complexity: v })}
-        />
+        {/* Testing Required (1-10) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            3. Testing Required: <span className="font-bold text-indigo-600">{cabAssessment.testingRequired || 5}/10</span>
+            <InfoTooltip text="Level of testing needed for this change. Consider: unit tests, integration tests, UAT, performance testing, security testing, and regression testing. 1 = Minimal testing, 10 = Extensive testing required." />
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={cabAssessment.testingRequired || 5}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              testingRequired: parseInt(e.target.value)
+            })}
+            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
+          />
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span>1 - Minimal</span>
+            <span>5 - Moderate</span>
+            <span>10 - Extensive</span>
+          </div>
+        </div>
 
-        <RiskSlider
-          label="Rollback Capability (5 = Easy to rollback)"
-          value={cabAssessment.rollbackCapability || 3}
-          onChange={(v) => setCabAssessment({ ...cabAssessment, rollbackCapability: v })}
-        />
+        {/* Rollback Capability (1-10) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            4. Rollback Capability: <span className="font-bold text-indigo-600">{cabAssessment.rollbackCapability || 5}/10</span>
+            <InfoTooltip text="How easily can this change be rolled back if issues occur? Consider: database migrations, data changes, external dependencies, downtime required. 1 = Very difficult/impossible to rollback, 10 = Can rollback instantly with no impact." />
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={cabAssessment.rollbackCapability || 5}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              rollbackCapability: parseInt(e.target.value)
+            })}
+            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
+          />
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span>1 - Very Difficult</span>
+            <span>5 - Moderate</span>
+            <span>10 - Very Easy</span>
+          </div>
+        </div>
 
-        <RiskSlider
-          label="Testing Coverage (5 = Excellent coverage)"
-          value={cabAssessment.testingCoverage || 3}
-          onChange={(v) => setCabAssessment({ ...cabAssessment, testingCoverage: v })}
-        />
+        {/* Documentation Required (1-10) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            5. Documentation Required: <span className="font-bold text-indigo-600">{cabAssessment.documentationRequired || 5}/10</span>
+            <InfoTooltip text="Level of documentation needed. Consider: technical docs, user guides, API documentation, runbooks, training materials, and knowledge transfer. 1 = Minimal docs, 10 = Extensive documentation." />
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={cabAssessment.documentationRequired || 5}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              documentationRequired: parseInt(e.target.value)
+            })}
+            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
+          />
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span>1 - Minimal</span>
+            <span>5 - Moderate</span>
+            <span>10 - Extensive</span>
+          </div>
+        </div>
       </div>
     );
   };
@@ -777,8 +833,11 @@ export default function CABReviewWizard() {
     return (
       <div className="space-y-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Strategic Alignment & Other Factors
+          Strategic & Impact Assessment
         </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Assess strategic alignment and overall impact scope.
+        </p>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -801,34 +860,34 @@ export default function CABReviewWizard() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Urgency: <span className="font-bold">{cabAssessment.urgency}/5</span>
+            Number of Users Impacted
           </label>
           <input
-            type="range"
-            min="1"
-            max="5"
-            value={cabAssessment.urgency || 3}
-            onChange={(e) => setCabAssessment({ ...cabAssessment, urgency: parseInt(e.target.value) })}
-            className="w-full"
+            type="number"
+            value={cabAssessment.impactedUsers || 0}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              impactedUsers: parseInt(e.target.value)
+            })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            placeholder="e.g., 100"
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Resource Requirement: <span className="font-bold">{cabAssessment.resourceRequirement}/5</span>
+            Dependencies (comma-separated)
           </label>
           <input
-            type="range"
-            min="1"
-            max="5"
-            value={cabAssessment.resourceRequirement || 3}
-            onChange={(e) => setCabAssessment({ ...cabAssessment, resourceRequirement: parseInt(e.target.value) })}
-            className="w-full"
+            type="text"
+            value={cabAssessment.dependencies?.join(', ') || ''}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              dependencies: e.target.value.split(',').map(s => s.trim()).filter(s => s)
+            })}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            placeholder="e.g., Network upgrade, Third-party API"
           />
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>Low</span>
-            <span>High</span>
-          </div>
         </div>
       </div>
     );
@@ -841,61 +900,139 @@ export default function CABReviewWizard() {
           Final Review
         </h3>
 
-        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-4">
-          <h4 className="font-semibold text-gray-900 dark:text-gray-100">Assessment Summary</h4>
+        {/* Benefits Section */}
+        {(cabAssessment.revenueImprovement || cabAssessment.costSavings || cabAssessment.customerImpact || cabAssessment.processImprovement || cabAssessment.internalQoL) && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg space-y-4">
+            <h4 className="font-semibold text-blue-900 dark:text-blue-100">Benefits Assessment</h4>
 
-          {cabAssessment.revenueImprovement && (
-            <div className="text-sm">
-              <span className="font-medium">Revenue Improvement:</span> £{cabAssessment.revenueImprovement.rawValue} in {cabAssessment.revenueImprovement.rawTimeline} months
+            {cabAssessment.revenueImprovement && (
+              <div className="space-y-1">
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-medium">Revenue Improvement:</span> £{cabAssessment.revenueImprovement.rawValue} annually realised in {cabAssessment.revenueImprovement.rawTimeline} {cabAssessment.revenueImprovement.rawTimeline === 1 ? 'month' : 'months'}
+                </div>
+                {originalBenefitValues.revenueImprovement && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 ml-4">
+                    Original: £{originalBenefitValues.revenueImprovement.rawValue} annually realised in {originalBenefitValues.revenueImprovement.rawTimeline} {originalBenefitValues.revenueImprovement.rawTimeline === 1 ? 'month' : 'months'}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {cabAssessment.costSavings && (
+              <div className="space-y-1">
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-medium">Cost Savings:</span> £{cabAssessment.costSavings.rawValue} annually realised in {cabAssessment.costSavings.rawTimeline} {cabAssessment.costSavings.rawTimeline === 1 ? 'month' : 'months'}
+                </div>
+                {originalBenefitValues.costSavings && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 ml-4">
+                    Original: £{originalBenefitValues.costSavings.rawValue} annually realised in {originalBenefitValues.costSavings.rawTimeline} {originalBenefitValues.costSavings.rawTimeline === 1 ? 'month' : 'months'}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {cabAssessment.customerImpact && (
+              <div className="space-y-1">
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-medium">Customer Impact:</span> {cabAssessment.customerImpact.rawValue} customers affected realised in {cabAssessment.customerImpact.rawTimeline} {cabAssessment.customerImpact.rawTimeline === 1 ? 'month' : 'months'}
+                </div>
+                {originalBenefitValues.customerImpact && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 ml-4">
+                    Original: {originalBenefitValues.customerImpact.rawValue} customers affected realised in {originalBenefitValues.customerImpact.rawTimeline} {originalBenefitValues.customerImpact.rawTimeline === 1 ? 'month' : 'months'}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {cabAssessment.processImprovement && (
+              <div className="space-y-1">
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-medium">Process Improvement:</span> {cabAssessment.processImprovement.rawValue} hours saved per month realised in {cabAssessment.processImprovement.rawTimeline} {cabAssessment.processImprovement.rawTimeline === 1 ? 'month' : 'months'}
+                </div>
+                {originalBenefitValues.processImprovement && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 ml-4">
+                    Original: {originalBenefitValues.processImprovement.rawValue} hours saved per month realised in {originalBenefitValues.processImprovement.rawTimeline} {originalBenefitValues.processImprovement.rawTimeline === 1 ? 'month' : 'months'}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {cabAssessment.internalQoL && (
+              <div className="space-y-1">
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-medium">Internal Quality of Life:</span> {cabAssessment.internalQoL.rawValue} users affected realised in {cabAssessment.internalQoL.rawTimeline} {cabAssessment.internalQoL.rawTimeline === 1 ? 'month' : 'months'}
+                </div>
+                {originalBenefitValues.internalQoL && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 ml-4">
+                    Original: {originalBenefitValues.internalQoL.rawValue} users affected realised in {originalBenefitValues.internalQoL.rawTimeline} {originalBenefitValues.internalQoL.rawTimeline === 1 ? 'month' : 'months'}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Effort Assessment Section */}
+        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg space-y-3">
+          <h4 className="font-semibold text-purple-900 dark:text-purple-100">Effort Assessment</h4>
+
+          <div className="space-y-1">
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              <span className="font-medium">Cost Estimated:</span> £{cabAssessment.costEstimated?.toLocaleString() || 0}
             </div>
-          )}
+            {originalData?.estimatedCost && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 ml-4">
+                Original: £{parseFloat(originalData.estimatedCost.toString().replace(/[£,]/g, '')).toLocaleString()}
+              </div>
+            )}
+          </div>
 
-          {cabAssessment.costSavings && (
-            <div className="text-sm">
-              <span className="font-medium">Cost Savings:</span> £{cabAssessment.costSavings.rawValue} in {cabAssessment.costSavings.rawTimeline} months
+          <div className="space-y-1">
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              <span className="font-medium">Hours Estimated:</span> {cabAssessment.hoursEstimated || 0} hours
             </div>
-          )}
-
-          {cabAssessment.customerImpact && (
-            <div className="text-sm">
-              <span className="font-medium">Customer Impact:</span> {cabAssessment.customerImpact.rawValue} customers in {cabAssessment.customerImpact.rawTimeline} months
-            </div>
-          )}
-
-          <div className="text-sm">
-            <span className="font-medium">Impacted Users:</span> {cabAssessment.impactedUsers}
+            {originalData?.estimatedEffortHours && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 ml-4">
+                Original: {originalData.estimatedEffortHours} hours
+              </div>
+            )}
           </div>
 
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-            <h5 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Effort Factors</h5>
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="font-medium">Resource Requirement:</span> {cabAssessment.resourceRequirement || 1}/10
           </div>
 
-          <div className="text-sm">
-            <span className="font-medium">Estimated Hours:</span> {originalData?.estimatedEffortHours || 0} hours
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="font-medium">Urgency:</span> {cabAssessment.urgency || 5}/10
           </div>
 
-          <div className="text-sm">
-            <span className="font-medium">Estimated Cost:</span> £{originalData?.estimatedCost || 0}
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="font-medium">Strategic Alignment:</span> {cabAssessment.strategicAlignment || 5}/10
+          </div>
+        </div>
+
+        {/* Risk Assessment Section */}
+        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg space-y-3">
+          <h4 className="font-semibold text-red-900 dark:text-red-100">Risk Assessment</h4>
+
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="font-medium">Business Risk:</span> {cabAssessment.businessRisk || 5}/10
           </div>
 
-          <div className="text-sm">
-            <span className="font-medium">Team Size:</span> {cabAssessment.teamSize || 1} people
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="font-medium">Complexity:</span> {cabAssessment.complexity || 5}/10
           </div>
 
-          <div className="text-sm">
-            <span className="font-medium">Testing Required:</span> {cabAssessment.testingRequired}/5 (1=Minimal, 5=Extensive)
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="font-medium">Testing Required:</span> {cabAssessment.testingRequired || 5}/10
           </div>
 
-          <div className="text-sm">
-            <span className="font-medium">Documentation Required:</span> {cabAssessment.documentationRequired}/5 (1=Minimal, 5=Extensive)
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="font-medium">Rollback Capability:</span> {cabAssessment.rollbackCapability || 5}/10
           </div>
 
-          <div className="text-sm">
-            <span className="font-medium">Risk Scores:</span> Technical: {cabAssessment.technicalRisk}/5, Business: {cabAssessment.businessRisk}/5, Complexity: {cabAssessment.complexity}/5
-          </div>
-
-          <div className="text-sm">
-            <span className="font-medium">Strategic Alignment:</span> {cabAssessment.strategicAlignment}/10
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="font-medium">Documentation Required:</span> {cabAssessment.documentationRequired || 5}/10
           </div>
         </div>
 
@@ -942,12 +1079,8 @@ export default function CABReviewWizard() {
     switch (step.field) {
       case 'effort':
         return renderEffortStep();
-      case 'impact':
-        return renderImpactStep();
       case 'risk':
         return renderRiskStep();
-      case 'strategic':
-        return renderStrategicStep();
       case 'review':
         return renderReviewStep();
       default:
@@ -1021,17 +1154,17 @@ export default function CABReviewWizard() {
         </div>
 
         {/* Navigation buttons */}
-        {currentStep < steps.length - 1 && (
-          <div className="flex gap-4">
-            <button
-              onClick={handlePrevious}
-              disabled={currentStep === 0}
-              className="flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Previous
-            </button>
+        <div className="flex gap-4">
+          <button
+            onClick={handlePrevious}
+            disabled={currentStep === 0}
+            className="flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Previous
+          </button>
 
+          {currentStep < steps.length - 1 && (
             <button
               onClick={handleNext}
               className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700"
@@ -1039,8 +1172,8 @@ export default function CABReviewWizard() {
               Next
               <ArrowRight className="w-5 h-5" />
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

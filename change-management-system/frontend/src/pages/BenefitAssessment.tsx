@@ -23,8 +23,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 interface ChangeRequest {
   id: string;
   title: string;
-  type: 'emergency' | 'major' | 'minor' | 'standard';
-  riskLevel: 'critical' | 'high' | 'medium' | 'low';
+  eisenhowerQuadrant?: string;
+  effortScore?: number;
   requester: string;
   submittedDate: Date;
   targetDate: Date;
@@ -96,15 +96,34 @@ export const BenefitAssessment: React.FC = () => {
   // Convert store changes to prioritization format
   useEffect(() => {
     const convertedChanges: ChangeRequest[] = storeChanges
-      .filter(change => change.status !== 'rejected' && change.status !== 'cancelled' && change.status !== 'completed')
+      .filter(change => change.status === 'approved')
       .map(change => {
         const wizardData = change.wizardData || {};
+
+        // Calculate matrix quadrant based on benefit and effort
+        const benefitScore = change.benefitScore || 0;
+        const effortScore = change.effortScore || 0;
+
+        console.log('Change:', change.requestNumber, 'Benefit:', benefitScore, 'Effort:', effortScore);
+
+        let eisenhowerQuadrant = 'Must Do';
+
+        if (benefitScore >= 50 && effortScore < 50) {
+          eisenhowerQuadrant = 'Must Do'; // High Benefit, Low Effort
+        } else if (benefitScore >= 50 && effortScore >= 50) {
+          eisenhowerQuadrant = 'Strategic'; // High Benefit, High Effort
+        } else if (benefitScore < 50 && effortScore >= 50) {
+          eisenhowerQuadrant = 'Reconsider'; // Low Benefit, High Effort
+        } else {
+          eisenhowerQuadrant = 'Quick Fixes'; // Low Benefit, Low Effort
+        }
 
         return {
           id: change.requestNumber || change.id,
           title: change.title,
-          type: change.priority === 'critical' ? 'emergency' : change.priority === 'high' ? 'major' : change.priority === 'medium' ? 'standard' : 'minor',
-          riskLevel: (change.riskLevel?.toLowerCase() as 'critical' | 'high' | 'medium' | 'low') || 'medium',
+          eisenhowerQuadrant,
+          benefitScore,
+          effortScore,
           requester: change.requester?.name || 'Unknown',
           submittedDate: change.submittedAt ? new Date(change.submittedAt) : new Date(),
           targetDate: wizardData.proposedDate ? new Date(wizardData.proposedDate) : new Date(),
@@ -472,38 +491,69 @@ export const BenefitAssessment: React.FC = () => {
 
                     {/* Factor Breakdown */}
                     {change.benefitFactors && (
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
-                        {Object.entries(change.benefitFactors).map(([key, value]) => {
-                          if (!value) return null;
-                          const { label, icon: Icon } = factorLabels[key] || {
-                            label: key,
-                            icon: Info
-                          };
-                          return (
-                            <div
-                              key={key}
-                              className="flex items-center gap-2 text-sm"
-                            >
-                              <Icon className="w-4 h-4 text-gray-500" />
-                              <span className="text-gray-600 dark:text-gray-400">
-                                {label}:
-                              </span>
-                              <span className="font-semibold text-gray-900 dark:text-white">
-                                {renderFactorValue(value)}
-                              </span>
-                            </div>
-                          );
-                        })}
+                      <div className="mt-4 space-y-2">
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Benefit Factor Scores:
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {Object.entries(change.benefitFactors).map(([key, value]) => {
+                            if (!value) return null;
+                            const { label, icon: Icon } = factorLabels[key] || {
+                              label: key,
+                              icon: Info
+                            };
+
+                            // Extract score details from the factor object
+                            let rawScore = 'N/A';
+                            let weightedScore = 'N/A';
+
+                            if (typeof value === 'object') {
+                              // Try to get the raw score - different fields for different factor types
+                              if ('combinedScore' in value) {
+                                rawScore = value.combinedScore?.toFixed(1) || 'N/A';
+                              } else if ('score' in value) {
+                                rawScore = value.score?.toFixed(1) || 'N/A';
+                              }
+
+                              // Get weighted score
+                              if ('weightedScore' in value) {
+                                weightedScore = value.weightedScore?.toFixed(1) || 'N/A';
+                              }
+                            }
+
+                            return (
+                              <div
+                                key={key}
+                                className="flex items-center justify-between text-sm p-2 bg-gray-50 dark:bg-gray-700 rounded"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Icon className="w-4 h-4 text-gray-500" />
+                                  <span className="text-gray-600 dark:text-gray-400">
+                                    {label}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    Score: <span className="font-semibold text-gray-900 dark:text-white">{rawScore}</span>
+                                  </span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    Weighted: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{weightedScore}</span>
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
 
                     {/* Metadata */}
                     <div className="flex items-center gap-4 mt-4 text-sm text-gray-600 dark:text-gray-400">
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded capitalize">
-                        {change.type}
+                        {change.eisenhowerQuadrant}
                       </span>
-                      <span className="px-2 py-1 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded capitalize">
-                        {change.riskLevel} Risk
+                      <span className="px-2 py-1 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded">
+                        Effort Score: {change.effortScore?.toFixed(0) || 0}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />

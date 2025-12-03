@@ -20,6 +20,57 @@ interface ChangeEvent {
   status: string;
   priority: string;
   requester: string;
+  estimatedHours?: number;
+}
+
+// Helper function to calculate end date/time accounting for 8-hour work days and excluding weekends
+const calculateWorkEndTime = (startDate: Date, totalHours: number): Date => {
+  const start = moment(startDate);
+  let remainingHours = totalHours;
+  let current = start.clone();
+
+  // If start time is past 5 PM, move to next working day at 9 AM
+  if (current.hour() >= 17) {
+    current.add(1, 'day').hour(9).minute(0).second(0);
+  }
+
+  // Skip weekends for start date
+  while (current.day() === 0 || current.day() === 6) {
+    current.add(1, 'day');
+  }
+
+  // Calculate hours available on first day (from start time until 5 PM)
+  const hoursLeftToday = Math.max(0, 17 - current.hour() - current.minute() / 60);
+
+  if (remainingHours <= hoursLeftToday) {
+    // Fits within first day
+    return current.add(remainingHours, 'hours').toDate();
+  }
+
+  // Use up the rest of today
+  remainingHours -= hoursLeftToday;
+  current.hour(17).minute(0).second(0);
+
+  // Add full 8-hour work days
+  while (remainingHours > 0) {
+    current.add(1, 'day').hour(9).minute(0).second(0);
+
+    // Skip weekends
+    while (current.day() === 0 || current.day() === 6) {
+      current.add(1, 'day');
+    }
+
+    if (remainingHours <= 8) {
+      // Last partial or full day
+      return current.add(remainingHours, 'hours').toDate();
+    }
+
+    // Full 8-hour day consumed
+    remainingHours -= 8;
+    current.hour(17).minute(0).second(0);
+  }
+
+  return current.toDate();
 }
 
 export const ChangeCalendar: React.FC = () => {
@@ -63,9 +114,14 @@ export const ChangeCalendar: React.FC = () => {
       if (!proposedDate) return null;
 
       const startDate = new Date(proposedDate);
+
+      // Get estimated hours from wizardData, default to 2 if not available
+      const estimatedHours = Number(wizardData.estimatedEffortHours) || 2;
+
+      // Calculate end date using multi-day scheduling if scheduledEnd not already set
       const endDate = change.scheduledEnd
         ? new Date(change.scheduledEnd)
-        : new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // Default 2 hours
+        : calculateWorkEndTime(startDate, estimatedHours);
 
       return {
         id: change.id,
@@ -76,6 +132,7 @@ export const ChangeCalendar: React.FC = () => {
         status: change.status,
         priority: change.priority,
         requester: change.requester?.name || 'Unknown',
+        estimatedHours,
       };
     })
     .filter((event): event is ChangeEvent => event !== null);
@@ -132,7 +189,9 @@ export const ChangeCalendar: React.FC = () => {
       // Pre-fill form with current values
       setEditStartDate(moment(selectedEvent.start).format('YYYY-MM-DD'));
       setEditStartTime(moment(selectedEvent.start).format('HH:mm'));
-      const duration = moment(selectedEvent.end).diff(moment(selectedEvent.start), 'hours', true);
+      // Use estimatedHours if available, otherwise calculate from end time
+      const duration = selectedEvent.estimatedHours ||
+                      moment(selectedEvent.end).diff(moment(selectedEvent.start), 'hours', true);
       setEditDuration(duration.toString());
       setIsEditing(true);
     }
@@ -143,7 +202,10 @@ export const ChangeCalendar: React.FC = () => {
 
     try {
       const startDateTime = moment(`${editStartDate} ${editStartTime}`, 'YYYY-MM-DD HH:mm').toDate();
-      const endDateTime = moment(startDateTime).add(parseFloat(editDuration), 'hours').toDate();
+      const durationHours = parseFloat(editDuration);
+
+      // Use multi-day scheduling logic for end time (accounts for 8-hour days and weekends)
+      const endDateTime = calculateWorkEndTime(startDateTime, durationHours);
 
       const updateData = {
         status: 'scheduled',
@@ -357,9 +419,9 @@ export const ChangeCalendar: React.FC = () => {
                     </div>
 
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Duration</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Estimated Duration</p>
                       <p className="text-base text-gray-900 dark:text-white">
-                        {moment
+                        {selectedEvent.estimatedHours || moment
                           .duration(
                             moment(selectedEvent.end).diff(moment(selectedEvent.start))
                           )
@@ -367,6 +429,11 @@ export const ChangeCalendar: React.FC = () => {
                           .toFixed(1)}{' '}
                         hours
                       </p>
+                      {selectedEvent.estimatedHours && selectedEvent.estimatedHours > 8 && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                          Spans {Math.ceil(selectedEvent.estimatedHours / 8)} work days
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -441,8 +508,27 @@ export const ChangeCalendar: React.FC = () => {
                         onChange={(e) => setEditDuration(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
                       />
+                      {parseFloat(editDuration) > 8 && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                          Will span multiple work days (8 hours/day, excluding weekends)
+                        </p>
+                      )}
                     </div>
                   </div>
+
+                  {editStartDate && editStartTime && editDuration && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
+                        <strong>Scheduled end:</strong>{' '}
+                        {moment(
+                          calculateWorkEndTime(
+                            moment(`${editStartDate} ${editStartTime}`, 'YYYY-MM-DD HH:mm').toDate(),
+                            parseFloat(editDuration)
+                          )
+                        ).format('MMMM D, YYYY h:mm A')}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="space-y-2 pt-4">
                     <button

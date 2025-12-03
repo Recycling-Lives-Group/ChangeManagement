@@ -1,3 +1,17 @@
+/**
+ * ChangeForm.tsx - Multi-step Change Request Form
+ *
+ * CRITICAL AUTO-SUBMIT BUG FIX:
+ * This form has a persistent issue where it would auto-submit when clicking "Next" from step 3,
+ * bypassing step 4 (Review). The fix requires BOTH of the following:
+ *
+ * 1. The Next button MUST call e.preventDefault() + e.stopPropagation() in its onClick handler
+ * 2. The nextStep() function MUST also receive the event and call preventDefault() + stopPropagation()
+ *
+ * DO NOT REMOVE THESE PREVENTDEFAULT CALLS - they are not redundant!
+ * React forms bubble events in ways that can trigger onSubmit even with type="button"
+ */
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -44,7 +58,7 @@ const changeRequestSchema = z.object({
   }).optional(),
   internalQoLDetails: z.object({
     usersAffected: z.string().optional(),
-    currentPainPoints: z.string().optional(),
+    qolTimeline: z.string().optional(),
     expectedImprovements: z.string().optional(),
   }).optional(),
   riskReductionDetails: z.object({
@@ -150,7 +164,17 @@ export default function ChangeForm() {
     }
   };
 
-  const nextStep = async () => {
+  const nextStep = async (e?: React.MouseEvent) => {
+    // CRITICAL: Prevent any default button behavior that could trigger form submission
+    // Even with type="button", React forms can still bubble events that trigger onSubmit
+    // This explicit preventDefault + stopPropagation is REQUIRED to prevent auto-submit
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    console.log('nextStep called from step', currentStep);
+
     let fieldsToValidate: (keyof FormData)[] = [];
 
     if (currentStep === 1) {
@@ -164,7 +188,10 @@ export default function ChangeForm() {
 
     const isValid = fieldsToValidate.length > 0 ? await trigger(fieldsToValidate) : true;
     if (isValid && currentStep < 4) {
+      console.log('Moving to step', currentStep + 1);
       setCurrentStep(currentStep + 1);
+    } else if (currentStep >= 4) {
+      console.log('Already at step 4 or beyond, not moving forward');
     }
   };
 
@@ -640,13 +667,13 @@ export default function ChangeForm() {
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Current Pain Points
+                            Time to Realise the Improvement (months)
                           </label>
-                          <textarea
-                            {...register('internalQoLDetails.currentPainPoints')}
-                            rows={3}
+                          <input
+                            {...register('internalQoLDetails.qolTimeline')}
+                            type="number"
                             className="w-full px-4 py-3 rounded-lg border border-indigo-300 dark:border-indigo-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all"
-                            placeholder="Describe current frustrations, manual work, inefficiencies affecting staff"
+                            placeholder="e.g., 3, 6, 12"
                           />
                         </div>
                         <div>
@@ -684,14 +711,17 @@ export default function ChangeForm() {
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            Time to Recover
+                            Time to Recover (hours)
                           </label>
                           <input
                             {...register('riskReductionDetails.complianceImprovement')}
-                            type="text"
+                            type="number"
                             className="w-full px-4 py-3 rounded-lg border border-red-300 dark:border-red-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 transition-all"
-                            placeholder="e.g., 2 weeks, 3 months, 1 year"
+                            placeholder="e.g., 48, 168, 720"
                           />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Enter hours needed to recover if risk occurs (e.g., 48 hours = 2 days, 168 hours = 1 week)
+                          </p>
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -893,7 +923,7 @@ export default function ChangeForm() {
                           <div className="border-l-2 border-indigo-400 pl-3">
                             <p className="font-semibold text-indigo-900 dark:text-indigo-300">✨ Internal Quality of Life:</p>
                             {formData.internalQoLDetails.usersAffected && <p>Affected: {formData.internalQoLDetails.usersAffected}</p>}
-                            {formData.internalQoLDetails.currentPainPoints && <p>Pain Points: {formData.internalQoLDetails.currentPainPoints}</p>}
+                            {formData.internalQoLDetails.qolTimeline && <p>Timeline: {formData.internalQoLDetails.qolTimeline} months</p>}
                             {formData.internalQoLDetails.expectedImprovements && <p>Improvements: {formData.internalQoLDetails.expectedImprovements}</p>}
                           </div>
                         )}
@@ -945,7 +975,13 @@ export default function ChangeForm() {
               {currentStep < 4 ? (
                 <button
                   type="button"
-                  onClick={nextStep}
+                  onClick={(e) => {
+                    // CRITICAL: Double preventDefault to ensure form doesn't submit
+                    // DO NOT REMOVE - this prevents auto-submit bug on steps 1-3
+                    e.preventDefault();
+                    e.stopPropagation();
+                    nextStep(e);
+                  }}
                   className="flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
                 >
                   Next

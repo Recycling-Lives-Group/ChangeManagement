@@ -19,11 +19,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 interface EffortWeights {
   hoursEstimated: number;
   costEstimated: number;
-  teamSize: number;
+  resourceRequirement: number;
   complexity: number;
   systemsAffected: number;
   testingRequired: number;
   documentationRequired: number;
+  urgency: number;
 }
 
 interface ChangeRequest {
@@ -41,11 +42,12 @@ export const EffortAssessment: React.FC = () => {
   const [weights, setWeights] = useState<EffortWeights>({
     hoursEstimated: 2.0,         // Most important
     costEstimated: 1.8,          // Very High
-    teamSize: 1.5,               // Medium-High
+    resourceRequirement: 1.5,    // Medium-High
     complexity: 1.6,             // High
     systemsAffected: 1.3,        // Medium
     testingRequired: 1.2,        // Medium
     documentationRequired: 1.0,  // Lower
+    urgency: 1.8,                // High - Time sensitivity
   });
   const [showWeightConfig, setShowWeightConfig] = useState(false);
   const [sortedChanges, setSortedChanges] = useState<ChangeRequest[]>([]);
@@ -93,20 +95,22 @@ export const EffortAssessment: React.FC = () => {
     const hoursEstimated = Number(wizardData.estimatedEffortHours) || 0;
     const costStr = wizardData.estimatedCost?.toString().replace(/[£,]/g, '') || '0';
     const costEstimated = parseFloat(costStr);
-    const teamSize = Number(wizardData.teamSize) || 1;
+    const resourceRequirement = Number(wizardData.resourceRequirement || wizardData.teamSize) || 1;
     const complexity = Number(wizardData.complexity) || inferComplexity(hoursEstimated);
     const systemsAffected = Array.isArray(wizardData.systemsAffected) ? wizardData.systemsAffected.length : 0;
     const testingRequired = Number(wizardData.testingRequired) || 3;
     const documentationRequired = Number(wizardData.documentationRequired) || 3;
+    const urgency = Number(wizardData.urgency) || 5;
 
     // Normalize to 0-100 scale and apply weights
     const hoursScore = normalizeToScale(hoursEstimated, [0, 40, 160, 400, 1000]);
     const costScore = normalizeToScale(costEstimated, [0, 1000, 5000, 20000, 50000]);
-    const teamScore = normalizeToScale(teamSize, [1, 2, 4, 6, 9]);
+    const resourceScore = normalizeToScale(resourceRequirement, [1, 2, 4, 6, 9]);
     const complexityScore = (complexity - 1) * 25;
     const systemsScore = normalizeToScale(systemsAffected, [0, 1, 2, 4, 5]);
     const testingScore = (testingRequired - 1) * 25;
     const documentationScore = (documentationRequired - 1) * 25;
+    const urgencyScore = (urgency - 1) * (100 / 9); // Scale 1-10 to 0-100
 
     let totalScore = 0;
     let totalWeight = 0;
@@ -117,8 +121,8 @@ export const EffortAssessment: React.FC = () => {
     totalScore += costScore * weights.costEstimated;
     totalWeight += weights.costEstimated;
 
-    totalScore += teamScore * weights.teamSize;
-    totalWeight += weights.teamSize;
+    totalScore += resourceScore * weights.resourceRequirement;
+    totalWeight += weights.resourceRequirement;
 
     totalScore += complexityScore * weights.complexity;
     totalWeight += weights.complexity;
@@ -131,6 +135,9 @@ export const EffortAssessment: React.FC = () => {
 
     totalScore += documentationScore * weights.documentationRequired;
     totalWeight += weights.documentationRequired;
+
+    totalScore += urgencyScore * weights.urgency;
+    totalWeight += weights.urgency;
 
     const normalizedScore = totalWeight > 0 ? totalScore / totalWeight : 0;
     return Math.round(normalizedScore);

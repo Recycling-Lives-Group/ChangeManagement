@@ -192,6 +192,15 @@ export default function Layout({ children }: LayoutProps) {
                     <span className="ml-3">Benefit Scoring Config</span>
                   </Link>
                 </li>
+                <li>
+                  <Link
+                    to="/effort-scoring-config"
+                    className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <Settings size={20} />
+                    <span className="ml-3">Effort Scoring Config</span>
+                  </Link>
+                </li>
               </>
             )}
 

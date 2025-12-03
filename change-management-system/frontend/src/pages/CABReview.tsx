@@ -317,6 +317,35 @@ export default function CABReview() {
                   </div>
                 </div>
 
+                {/* Start Assessment Card - MOVED TO TOP */}
+                {(selectedChange.status === 'submitted' || selectedChange.status === 'under_review') && (
+                  <div className="bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 p-6 rounded-2xl shadow-xl border-2 border-green-300 dark:border-green-700">
+                    <h3 className="text-2xl font-bold text-green-800 dark:text-green-300 mb-4 flex items-center gap-2">
+                      <CheckCircle className="w-8 h-8" />
+                      CAB Assessment
+                    </h3>
+                    <p className="text-green-700 dark:text-green-400 mb-6 text-base">
+                      Complete a comprehensive assessment of this change request, including benefit, effort, and risk analysis.
+                    </p>
+                    <div className="space-y-3">
+                      <Link
+                        to={`/cab-review/${selectedChange.id}/assess`}
+                        className="block w-full px-6 py-4 bg-green-600 text-white text-center rounded-xl hover:bg-green-700 transition-all shadow-lg hover:shadow-xl font-bold text-lg"
+                      >
+                        <CheckCircle size={20} className="inline mr-2" />
+                        Start Assessment Wizard
+                      </Link>
+                      <Link
+                        to={`/changes/${selectedChange.id}`}
+                        className="block w-full px-6 py-3 bg-white dark:bg-gray-700 text-green-700 dark:text-green-300 text-center rounded-xl hover:bg-green-50 dark:hover:bg-gray-600 transition-all font-semibold border border-green-300 dark:border-green-600"
+                      >
+                        <Eye size={16} className="inline mr-2" />
+                        View Full Details
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
                 {/* Review Statistics Card */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl">
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -668,34 +697,6 @@ export default function CABReview() {
                     </div>
                       </div>
                     )}
-                  </div>
-                )}
-
-                {/* Start Assessment Card */}
-                {(selectedChange.status === 'submitted' || selectedChange.status === 'under_review') && (
-                  <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                      CAB Assessment
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Complete a comprehensive assessment of this change request, including benefit, effort, and risk analysis.
-                    </p>
-                    <div className="space-y-3">
-                      <Link
-                        to={`/cab-review/${selectedChange.id}/assess`}
-                        className="block w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-center rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg font-semibold"
-                      >
-                        <CheckCircle size={16} className="inline mr-2" />
-                        Start Assessment Wizard
-                      </Link>
-                      <Link
-                        to={`/changes/${selectedChange.id}`}
-                        className="block w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg font-semibold"
-                      >
-                        <Eye size={16} className="inline mr-2" />
-                        View Full Details
-                      </Link>
-                    </div>
                   </div>
                 )}
 

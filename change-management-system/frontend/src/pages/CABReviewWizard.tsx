@@ -34,27 +34,29 @@ interface CABAssessment {
   processImprovement?: BenefitFactor;
   internalQoL?: BenefitFactor;
 
+  // Effort factors (all 8)
+  hoursEstimated?: number;           // From original request
+  costEstimated?: number;            // From original request
+  resourceRequirement?: number;      // 1-10 people
+  complexity?: number;               // 1-10 scale
+  systemsAffected?: number;          // Count of systems
+  testingRequired?: number;          // 1-10 scale
+  documentationRequired?: number;    // 1-10 scale
+  urgency?: number;                  // 1-10 scale
+
   // Impact factors
   impactedUsers?: number;
-  systemsAffected?: string[];
+  systemsAffectedList?: string[];
   dependencies?: string[];
-
-  // Effort factors
-  teamSize?: number;
-  testingRequired?: number; // 1-5
-  documentationRequired?: number; // 1-5
 
   // Risk factors
   technicalRisk?: number; // 1-5
   businessRisk?: number; // 1-5
-  complexity?: number; // 1-5
   rollbackCapability?: number; // 1-5
   testingCoverage?: number; // 1-5
 
   // Strategic factors
   strategicAlignment?: number; // 1-10
-  urgency?: number; // 1-5
-  resourceRequirement?: number; // 1-5
 
   // CAB comments
   cabComments?: string;
@@ -136,25 +138,27 @@ export default function CABReviewWizard() {
 
     // Impact
     assessment.impactedUsers = parseInt(wizardData.impactedUsers || '0');
-    assessment.systemsAffected = wizardData.systemsAffected || [];
+    assessment.systemsAffectedList = wizardData.systemsAffected || [];
     assessment.dependencies = wizardData.dependencies || [];
 
-    // Effort - extract from wizard or use defaults
-    assessment.teamSize = parseInt(wizardData.teamSize || '1');
-    assessment.testingRequired = 3; // Default medium
-    assessment.documentationRequired = 3; // Default medium
+    // Effort - all 8 factors
+    assessment.hoursEstimated = parseInt(wizardData.estimatedEffortHours || '0');
+    assessment.costEstimated = parseFloat(wizardData.estimatedCost?.toString().replace(/[£,]/g, '') || '0');
+    assessment.resourceRequirement = parseInt(wizardData.resourceRequirement || wizardData.teamSize || '1');
+    assessment.complexity = parseInt(wizardData.complexity || '5');
+    assessment.systemsAffected = Array.isArray(wizardData.systemsAffected) ? wizardData.systemsAffected.length : 0;
+    assessment.testingRequired = parseInt(wizardData.testingRequired || '5');
+    assessment.documentationRequired = parseInt(wizardData.documentationRequired || '5');
+    assessment.urgency = parseInt(wizardData.urgency || '5');
 
     // Risk - default to medium values
     assessment.technicalRisk = 3;
     assessment.businessRisk = 3;
-    assessment.complexity = 3;
     assessment.rollbackCapability = 3;
     assessment.testingCoverage = 3;
 
     // Strategic
     assessment.strategicAlignment = 5;
-    assessment.urgency = 3;
-    assessment.resourceRequirement = 3;
 
     setCabAssessment(assessment);
   };
@@ -186,8 +190,9 @@ export default function CABReviewWizard() {
       icon: Smile,
       field: 'internalQoL'
     }] : []),
-    // Always include these
-    { title: 'Impact Assessment', icon: Server, field: 'impact' },
+    // Always include these - Benefits first, then Effort
+    { title: 'Effort Assessment', icon: Clock, field: 'effort' },
+    { title: 'Impact & Dependencies', icon: Server, field: 'impact' },
     { title: 'Risk Assessment', icon: AlertTriangle, field: 'risk' },
     { title: 'Strategic Alignment', icon: Target, field: 'strategic' },
     { title: 'Final Review', icon: CheckCircle, field: 'review' },
@@ -278,7 +283,7 @@ export default function CABReviewWizard() {
         case 'customerImpact':
           return { label: 'Customers Affected', unit: '', valueLabel: 'Number of Customers' };
         case 'processImprovement':
-          return { label: 'Efficiency Gain', unit: '%', valueLabel: 'Efficiency Percentage' };
+          return { label: 'Hours Saved', unit: 'hours', valueLabel: 'Hours Saved Per Month' };
         case 'internalQoL':
           return { label: 'Employees Affected', unit: '', valueLabel: 'Number of Employees' };
         default:
@@ -310,18 +315,15 @@ export default function CABReviewWizard() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {config.valueLabel}
             </label>
-            <div className="flex items-center gap-2">
-              {config.unit && <span className="text-gray-500">{config.unit}</span>}
-              <input
-                type="text"
-                value={factor?.rawValue || ''}
-                onChange={(e) => setCabAssessment({
-                  ...cabAssessment,
-                  [field]: { ...factor, rawValue: e.target.value }
-                })}
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-              />
-            </div>
+            <input
+              type="text"
+              value={factor?.rawValue || ''}
+              onChange={(e) => setCabAssessment({
+                ...cabAssessment,
+                [field]: { ...factor, rawValue: e.target.value }
+              })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            />
           </div>
 
           <div>
@@ -358,11 +360,200 @@ export default function CABReviewWizard() {
     );
   };
 
+  const renderEffortStep = () => {
+    const InfoTooltip = ({ text }: { text: string }) => (
+      <div className="group relative inline-block ml-2">
+        <AlertTriangle className="w-4 h-4 text-blue-500 cursor-help inline" />
+        <div className="hidden group-hover:block absolute z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg -top-2 left-6 shadow-lg">
+          {text}
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800 mb-6">
+          <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
+            Effort Assessment
+          </h3>
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            Review and assess all effort-related factors for this change. Hover over the info icons for explanations.
+          </p>
+        </div>
+
+        {/* Hours Estimated (Read-only from original) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            1. Hours Estimated
+            <InfoTooltip text="Total estimated hours required to implement this change. This value is from the original change request and cannot be modified here." />
+          </label>
+          <input
+            type="number"
+            value={cabAssessment.hoursEstimated || 0}
+            readOnly
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 dark:text-white"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">From original change request (read-only)</p>
+        </div>
+
+        {/* Cost Estimated (Read-only from original) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            2. Cost Estimated (£)
+            <InfoTooltip text="Total estimated financial cost for implementing this change. This includes resource costs, infrastructure, licensing, etc. From the original change request." />
+          </label>
+          <input
+            type="text"
+            value={cabAssessment.costEstimated ? `£${cabAssessment.costEstimated.toLocaleString()}` : '£0'}
+            readOnly
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 dark:text-white"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">From original change request (read-only)</p>
+        </div>
+
+        {/* Resource Requirement (1-10) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            3. Resource Requirement: <span className="font-bold text-indigo-600">{cabAssessment.resourceRequirement || 1}/10</span>
+            <InfoTooltip text="How many people/resources are required to implement this change? Scale of 1-10 where 1 = 1 person, 10 = 10+ people. Consider both full-time and part-time resources." />
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={cabAssessment.resourceRequirement || 1}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              resourceRequirement: parseInt(e.target.value)
+            })}
+            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
+          />
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span>1 person</span>
+            <span>5-6 people</span>
+            <span>10+ people</span>
+          </div>
+        </div>
+
+        {/* Complexity (1-10) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            4. Complexity: <span className="font-bold text-indigo-600">{cabAssessment.complexity || 5}/10</span>
+            <InfoTooltip text="Technical complexity of the change. Consider: code complexity, architectural changes, integration points, data migrations, and technical challenges. 1 = Simple change, 10 = Highly complex change." />
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={cabAssessment.complexity || 5}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              complexity: parseInt(e.target.value)
+            })}
+            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
+          />
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span>1 - Simple</span>
+            <span>5 - Moderate</span>
+            <span>10 - Highly Complex</span>
+          </div>
+        </div>
+
+        {/* Systems Affected (Count - calculated from list) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            5. Systems Affected: <span className="font-bold text-indigo-600">{cabAssessment.systemsAffected || 0}</span>
+            <InfoTooltip text="Number of different systems/applications that will be impacted by this change. This is calculated from the systems list in Impact & Dependencies step." />
+          </label>
+          <input
+            type="number"
+            value={cabAssessment.systemsAffected || 0}
+            readOnly
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 dark:text-white"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Calculated from systems list (read-only)</p>
+        </div>
+
+        {/* Testing Required (1-10) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            6. Testing Required: <span className="font-bold text-indigo-600">{cabAssessment.testingRequired || 5}/10</span>
+            <InfoTooltip text="Level of testing needed for this change. Consider: unit tests, integration tests, UAT, performance testing, security testing, and regression testing. 1 = Minimal testing, 10 = Extensive testing required." />
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={cabAssessment.testingRequired || 5}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              testingRequired: parseInt(e.target.value)
+            })}
+            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
+          />
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span>1 - Minimal</span>
+            <span>5 - Moderate</span>
+            <span>10 - Extensive</span>
+          </div>
+        </div>
+
+        {/* Documentation Required (1-10) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            7. Documentation Required: <span className="font-bold text-indigo-600">{cabAssessment.documentationRequired || 5}/10</span>
+            <InfoTooltip text="Level of documentation needed. Consider: technical docs, user guides, API documentation, runbooks, training materials, and knowledge transfer. 1 = Minimal docs, 10 = Extensive documentation." />
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={cabAssessment.documentationRequired || 5}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              documentationRequired: parseInt(e.target.value)
+            })}
+            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
+          />
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span>1 - Minimal</span>
+            <span>5 - Moderate</span>
+            <span>10 - Extensive</span>
+          </div>
+        </div>
+
+        {/* Urgency (1-10) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            8. Urgency: <span className="font-bold text-indigo-600">{cabAssessment.urgency || 5}/10</span>
+            <InfoTooltip text="Time sensitivity of this change. Consider: deadlines, business impact of delays, regulatory requirements, competitive pressure, and customer commitments. 1 = Can wait, 10 = Urgent/Critical." />
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={cabAssessment.urgency || 5}
+            onChange={(e) => setCabAssessment({
+              ...cabAssessment,
+              urgency: parseInt(e.target.value)
+            })}
+            className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-700"
+          />
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span>1 - Low</span>
+            <span>5 - Moderate</span>
+            <span>10 - Critical</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderImpactStep = () => {
     return (
       <div className="space-y-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Impact Assessment
+          Impact & Dependencies
         </h3>
 
         <div>
@@ -386,14 +577,21 @@ export default function CABReviewWizard() {
           </label>
           <input
             type="text"
-            value={cabAssessment.systemsAffected?.join(', ') || ''}
-            onChange={(e) => setCabAssessment({
-              ...cabAssessment,
-              systemsAffected: e.target.value.split(',').map(s => s.trim()).filter(s => s)
-            })}
+            value={cabAssessment.systemsAffectedList?.join(', ') || ''}
+            onChange={(e) => {
+              const systemsList = e.target.value.split(',').map(s => s.trim()).filter(s => s);
+              setCabAssessment({
+                ...cabAssessment,
+                systemsAffectedList: systemsList,
+                systemsAffected: systemsList.length // Update count for effort calculation
+              });
+            }}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
             placeholder="e.g., CRM, Database, API Gateway"
           />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Count: {cabAssessment.systemsAffected || 0} systems
+          </p>
         </div>
 
         <div>
@@ -412,8 +610,8 @@ export default function CABReviewWizard() {
           />
         </div>
 
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
-          <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-4">Effort Assessment</h4>
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6 hidden">
+          <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-4">Effort Assessment (Moved to dedicated step)</h4>
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -742,6 +940,8 @@ export default function CABReviewWizard() {
     if (!step) return null;
 
     switch (step.field) {
+      case 'effort':
+        return renderEffortStep();
       case 'impact':
         return renderImpactStep();
       case 'risk':

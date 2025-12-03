@@ -40,11 +40,8 @@ interface PriorityFactors {
   customerImpact: number;
   processImprovement: number;
   internalQoL: number;
-  urgency: number;
-  impactScope: number;
-  riskLevel: number;
-  resourceRequirement: number;
   strategicAlignment: number;
+  riskReduction: number;
 }
 
 export const BenefitAssessment: React.FC = () => {
@@ -57,10 +54,7 @@ export const BenefitAssessment: React.FC = () => {
     processImprovement: 1.9,    // High - Operational efficiency
     internalQoL: 1.6,           // Medium-High - Employee satisfaction
     strategicAlignment: 2.0,    // High - Long-term goals
-    urgency: 1.8,               // High - Time sensitivity
-    impactScope: 1.5,           // Medium - Scale of change
-    riskLevel: 1.4,             // Medium - Risk consideration
-    resourceRequirement: 1.0,   // Low - Resources needed (inverse)
+    riskReduction: 1.7,         // High - Risk mitigation
   });
   const [benefitConfigs, setBenefitConfigs] = useState<Record<string, any>>({});
   const [showWeightConfig, setShowWeightConfig] = useState(false);
@@ -174,10 +168,7 @@ export const BenefitAssessment: React.FC = () => {
       processImprovement: 1.9,    // High - Operational efficiency
       internalQoL: 1.6,           // Medium-High - Employee satisfaction
       strategicAlignment: 2.0,    // High - Long-term goals
-      urgency: 1.8,               // High - Time sensitivity
-      impactScope: 1.5,           // Medium - Scale of change
-      riskLevel: 1.4,             // Medium - Risk consideration
-      resourceRequirement: 1.0,   // Low - Resources needed (inverse)
+      riskReduction: 1.7,         // High - Risk mitigation
     });
   };
 
@@ -302,25 +293,10 @@ export const BenefitAssessment: React.FC = () => {
       icon: Zap,
       help: 'Alignment with long-term business goals',
     },
-    urgency: {
-      label: 'Urgency',
-      icon: Clock,
-      help: 'Time sensitivity and deadline pressure',
-    },
-    impactScope: {
-      label: 'Impact Scope',
-      icon: Users,
-      help: 'Number of users/systems affected',
-    },
-    riskLevel: {
-      label: 'Risk Level',
+    riskReduction: {
+      label: 'Risk Reduction',
       icon: AlertTriangle,
-      help: 'Risk and potential impact of failure',
-    },
-    resourceRequirement: {
-      label: 'Resource Requirement',
-      icon: Users,
-      help: 'Resources needed (lower is better)',
+      help: 'Mitigation of risks and potential negative impacts',
     },
   };
 

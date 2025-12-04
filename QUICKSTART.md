@@ -81,127 +81,71 @@
 
    The frontend will run on http://localhost:5173
 
+## Alternative: Run from Project Root (Recommended)
+
+The project uses npm workspaces. You can run everything from the root directory:
+
+```bash
+cd change-management-system
+
+# Install all dependencies (backend + frontend + shared packages)
+npm install
+
+# Run both frontend and backend together
+npm run dev              # Uses local database
+npm run dev:prod         # Uses production database (testing)
+
+# Run individually (if needed)
+npm run dev:frontend     # Frontend only
+npm run dev:backend      # Backend only
+```
+
+See [ENVIRONMENT_SWITCHING.md](change-management-system/ENVIRONMENT_SWITCHING.md) for switching between local and production databases.
+
 ## First Login
 
+### Local Development
+
 1. Open http://localhost:5173 in your browser
-2. Register a new account (first user will be created as admin)
-3. Login with your credentials
+2. Register a new account
+3. **Manually set user as admin** via MySQL:
+   ```bash
+   mysql -u root -p change_management
+   ```
+   ```sql
+   UPDATE users SET role='admin' WHERE email='your@email.com';
+   ```
+4. Refresh page and login with admin privileges
 
-## Key Features
+### Production Environment
 
-### Implemented Features
+Default admin account (already created):
+- **Email:** admin@example.com
+- **Password:** password123
 
-- **User Dashboard**: View and manage change requests
-- **Change Request Wizard**: Multi-step form for creating change requests
-  - Basic information
-  - Benefit reasons (revenue, cost reduction, customer impact, etc.)
-  - Impact assessment
-  - Review and submit
-- **Benefit Assessment**: Configure and assess benefit scores with weighting
-- **Effort Assessment**: Evaluate effort required using Eisenhower Matrix
-- **Metrics Dashboard**: Real-time analytics
-  - Changes by benefit type (pie chart)
-  - Revenue improvement & cost savings (bar chart)
-  - Hours saved through process improvements
-  - Status counts (submitted, rejected, scheduled, completed)
-- **Benefit Scoring Configuration**: Database-driven scoring system
-- **Admin Dashboard**: Manage users and system settings
-- **CAB Review**: Change Advisory Board review interface
-- **Debug View**: Developer tools for inspecting change requests
+⚠️ **IMPORTANT:** Change the password immediately after first login!
 
-### Key Improvements
+## What's Next?
 
-- **UK-Based Currency**: All financial displays use £ (GBP)
-- **Database-Driven Scoring**: Benefit scores calculated from `benefit_scoring_config` table
-- **Multi-Benefit Support**: Changes can have multiple benefit types
-- **Delete Functionality**: Remove change requests from dashboard
-- **Benefit Icons**: Visual indicators on dashboard with tooltips
-- **Form Validation**: Prevents premature submission in multi-step wizard
+### Learn More
 
-## Database Schema
+For detailed information about the system, see:
 
-The system uses MariaDB with the following key tables:
+- **[README.md](change-management-system/README.md)** - Full feature list and technical details
+- **[FEATURES_CHECKLIST.md](change-management-system/FEATURES_CHECKLIST.md)** - Complete feature tracking
+- **[DEVELOPMENT.md](change-management-system/DEVELOPMENT.md)** - Development guide and best practices
+- **[PRODUCTION_DEPLOYMENT.md](change-management-system/PRODUCTION_DEPLOYMENT.md)** - Production deployment guide
+- **[API Documentation](change-management-system/README.md#-api-endpoints)** - All API endpoints
 
-- `users`: User accounts and authentication
-- `change_requests`: Core change request data with JSON `wizard_data` field
-- `benefit_scoring_config`: Configurable benefit scoring parameters
-  - Revenue Improvement: £100,000 = 100 points
-  - Cost Reduction: £80,000 = 100 points
-  - Customer Impact: 10,000 customers = 100 points
-  - Process Improvement: 100% efficiency = 100 points
-  - Internal QoL: 500 employees = 100 points
-  - Strategic Alignment: 10/10 scale = 100 points
+### Key Features Implemented
 
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login
-- `GET /api/auth/me` - Get current user
-
-### Change Requests
-- `GET /api/changes` - List all changes
-- `GET /api/changes/:id` - Get specific change
-- `POST /api/changes` - Create new change
-- `PUT /api/changes/:id` - Update change
-- `DELETE /api/changes/:id` - Delete change
-- `POST /api/changes/:id/approve` - Approve change
-- `POST /api/changes/:id/reject` - Reject change
-- `PUT /api/changes/:id/benefit-score` - Update benefit score
-
-### Benefit Configuration
-- `GET /api/benefit-config` - Get all benefit scoring configs
-- `POST /api/benefit-config` - Create config
-- `PUT /api/benefit-config/:id` - Update config
-
-### Metrics
-- `GET /api/metrics` - Get dashboard metrics
-
-## Development Notes
-
-### Tech Stack
-
-**Backend:**
-- Node.js + Express
-- TypeScript
-- MariaDB (mysql2)
-- JWT Authentication
-- Socket.io (for real-time updates)
-
-**Frontend:**
-- React 19
-- TypeScript
-- Vite
-- TailwindCSS
-- React Router
-- Recharts (for analytics)
-- React Flow (for dependency visualization)
-- Axios
-- Sonner (toast notifications)
-
-### Project Structure
-
-```
-change-management-system/
-├── backend/
-│   ├── src/
-│   │   ├── config/          # Database and app config
-│   │   ├── controllers/     # Route controllers
-│   │   ├── middleware/      # Auth middleware
-│   │   ├── routes/          # API routes
-│   │   ├── database/        # SQL schema and seeds
-│   │   └── index.ts         # Server entry point
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # Reusable components
-│   │   ├── lib/             # Utility functions (benefitCalculator, etc.)
-│   │   ├── pages/           # Page components
-│   │   ├── store/           # State management (Zustand)
-│   │   └── App.tsx          # Main app component
-│   └── package.json
-└── QUICKSTART.md
-```
+✅ Change Request Wizard (multi-step)
+✅ Database-driven scoring system
+✅ CAB Review interface
+✅ Metrics Dashboard with analytics
+✅ Benefit & Effort Assessment tools
+✅ Admin Dashboard
+✅ Environment switching (local/production)
 
 ## Troubleshooting
 

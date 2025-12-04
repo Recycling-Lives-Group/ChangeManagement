@@ -184,15 +184,54 @@ change-management-system/
 
 ## 🚦 Getting Started
 
-See [QUICKSTART.md](../QUICKSTART.md) for detailed setup instructions.
+### Quick Start (Recommended)
 
-Quick overview:
+```bash
+# Clone and enter project
+cd change-management-system
+
+# Install all dependencies
+npm install
+
+# Run both frontend and backend
+npm run dev              # Local database
+npm run dev:prod         # Production database (testing)
+```
+
+See [QUICKSTART.md](../QUICKSTART.md) for detailed setup instructions including:
 1. Install MariaDB 12.1
 2. Create database and run schema/seeds
 3. Configure backend `.env` (database, JWT secret)
 4. Configure frontend `.env` (API URL)
-5. `npm install` in backend and frontend
-6. `npm run dev` in both directories
+5. Create first admin user
+
+## 🌍 Production Environment
+
+- **Status:** ✅ Deployed and operational
+- **Database:** MariaDB on private network
+- **Environment Switching:** Seamlessly switch between local and production databases
+- **Admin Access:** Contact team for production credentials (stored securely)
+- **Documentation:**
+  - [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) - Full deployment guide
+  - [ENVIRONMENT_SWITCHING.md](ENVIRONMENT_SWITCHING.md) - How to switch environments
+  - [PRE_PRODUCTION_CHECKLIST.md](PRE_PRODUCTION_CHECKLIST.md) - Deployment checklist
+
+### Default Production Admin
+- Email: admin@example.com
+- Password: password123
+- ⚠️ **Change password immediately after first login**
+
+### Environment Switching
+```bash
+npm run dev       # Local development database (localhost)
+npm run dev:prod  # Production database testing (read/write)
+```
+
+The console clearly shows which environment is active:
+```
+✅ MariaDB Connected [development] - localhost:3306/change_management
+✅ MariaDB Connected [production] - [PROD_HOST]:3306/change_management
+```
 
 ## 📝 API Endpoints
 

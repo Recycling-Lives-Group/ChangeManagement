@@ -51,7 +51,8 @@ export default function CABReview() {
   const handleDecision = async (changeId: string, decision: 'approve' | 'reject') => {
     try {
       const endpoint = decision === 'approve' ? 'approve' : 'reject';
-      const response = await fetch(`http://localhost:5000/api/changes/${changeId}/${endpoint}`, {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_URL}/changes/${changeId}/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

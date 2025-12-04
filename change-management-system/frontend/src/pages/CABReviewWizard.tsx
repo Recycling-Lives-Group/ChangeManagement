@@ -224,7 +224,8 @@ export default function CABReviewWizard() {
   const handleApprove = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/changes/${id}/cab-approve`, {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_URL}/changes/${id}/cab-approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -254,7 +255,8 @@ export default function CABReviewWizard() {
   const handleReject = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/changes/${id}/cab-approve`, {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_URL}/changes/${id}/cab-approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

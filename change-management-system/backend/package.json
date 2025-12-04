@@ -4,8 +4,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:prod": "dotenv -e .env.production tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:prod": "dotenv -e .env.production node dist/index.js",
     "test": "jest",
     "db:setup": "tsx src/database/setup.ts setup",
     "db:seed": "tsx src/database/setup.ts seed",
@@ -36,6 +38,7 @@
     "typescript": "^5.7.2",
     "tsx": "^4.19.2",
     "jest": "^29.7.0",
-    "@types/jest": "^29.5.14"
+    "@types/jest": "^29.5.14",
+    "dotenv-cli": "^7.4.2"
   }
 }

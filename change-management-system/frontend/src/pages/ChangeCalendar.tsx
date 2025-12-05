@@ -80,7 +80,7 @@ export const ChangeCalendar: React.FC = () => {
   const [date, setDate] = useState(new Date());
 
   const [selectedEvent, setSelectedEvent] = useState<ChangeEvent | null>(null);
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editStartDate, setEditStartDate] = useState('');
   const [editStartTime, setEditStartTime] = useState('');
@@ -686,8 +686,8 @@ export const ChangeCalendar: React.FC = () => {
                   Next 3 scheduled changes
                 </p>
                 <div className="space-y-2">
-                  {filteredEvents
-                    .filter((event) => moment(event.start).isAfter(moment()))
+                  {calendarEvents
+                    .filter((event) => moment(event.start).isSameOrAfter(moment(), 'day'))
                     .sort((a, b) => moment(a.start).diff(moment(b.start)))
                     .slice(0, 3)
                     .map((event) => (
@@ -710,7 +710,7 @@ export const ChangeCalendar: React.FC = () => {
                         <div className="mt-2">{getPriorityBadge(event.priority)}</div>
                       </div>
                     ))}
-                  {filteredEvents.filter((event) => moment(event.start).isAfter(moment())).length === 0 && (
+                  {calendarEvents.filter((event) => moment(event.start).isSameOrAfter(moment(), 'day')).length === 0 && (
                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                       <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
                       <p>No upcoming scheduled changes</p>

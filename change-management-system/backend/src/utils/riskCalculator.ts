@@ -1,5 +1,18 @@
 // Risk calculation utility
-// This logic mirrors the risk calculator in the frontend
+// New model: Risk = Cost Impact + Recovery Time Impact
+// Cost: £100,000 = 100 points
+// Recovery: 720 hours (1 month) = 100 points
+// Total risk score = cost score + recovery score
+
+interface RiskConfig {
+  costFor100Points: number; // Default: 100000 (£100k)
+  hoursFor100Points: number; // Default: 720 (1 month)
+}
+
+const DEFAULT_RISK_CONFIG: RiskConfig = {
+  costFor100Points: 100000,
+  hoursFor100Points: 720,
+};
 
 interface RiskFactors {
   impactScope: number; // 1-5
@@ -157,9 +170,64 @@ export function calculateRiskScore(
 }
 
 /**
+ * Calculate risk using the new simplified model: Cost + Recovery Time
+ */
+export function calculateRiskFromCostAndRecovery(
+  costInGBP: number,
+  recoveryHours: number,
+  config: RiskConfig = DEFAULT_RISK_CONFIG
+): { score: number; level: string; costScore: number; recoveryScore: number } {
+  // Calculate cost score (0-100 scale)
+  const costScore = Math.min(100, (costInGBP / config.costFor100Points) * 100);
+
+  // Calculate recovery time score (0-100 scale)
+  const recoveryScore = Math.min(100, (recoveryHours / config.hoursFor100Points) * 100);
+
+  // Combined score (0-200 scale, normalized to 0-100)
+  const combinedScore = costScore + recoveryScore;
+  const normalizedScore = Math.min(100, combinedScore / 2); // Normalize to 0-100
+  const score = Math.round(normalizedScore);
+
+  // Determine risk level
+  let level = '';
+  if (normalizedScore < 25) {
+    level = 'Low';
+  } else if (normalizedScore < 50) {
+    level = 'Medium';
+  } else if (normalizedScore < 75) {
+    level = 'High';
+  } else {
+    level = 'Critical';
+  }
+
+  return {
+    score,
+    level,
+    costScore: Math.round(costScore),
+    recoveryScore: Math.round(recoveryScore),
+  };
+}
+
+/**
  * Auto-calculate risk for a change request based on wizard data
+ * Now uses the simplified cost + recovery time model
  */
 export function autoCalculateRisk(wizardData: any): { score: number; level: string } {
+  // Try to use the new simplified model if data is available
+  if (wizardData.riskReductionDetails) {
+    const costStr = wizardData.riskReductionDetails.currentRisks || '0';
+    const recoveryHours = Number(wizardData.riskReductionDetails.complianceImprovement) || 0;
+
+    // Parse cost - extract numbers from string (e.g., "£50,000" -> 50000)
+    const costMatch = costStr.toString().match(/[\d,]+/);
+    const costInGBP = costMatch ? parseFloat(costMatch[0].replace(/,/g, '')) : 0;
+
+    if (costInGBP > 0 || recoveryHours > 0) {
+      return calculateRiskFromCostAndRecovery(costInGBP, recoveryHours);
+    }
+  }
+
+  // Fallback to old multi-factor model if no risk reduction data
   const factors = calculateRiskFactorsFromWizardData(wizardData);
   return calculateRiskScore(factors);
 }

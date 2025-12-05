@@ -96,7 +96,12 @@ export const BenefitAssessment: React.FC = () => {
   // Convert store changes to prioritization format
   useEffect(() => {
     const convertedChanges: ChangeRequest[] = storeChanges
-      .filter(change => change.status === 'approved')
+      .filter(change =>
+        change.status !== 'rejected' &&
+        change.status !== 'cancelled' &&
+        change.status !== 'completed' &&
+        change.status !== 'implemented'
+      )
       .map(change => {
         const wizardData = change.wizardData || {};
 
@@ -134,14 +139,20 @@ export const BenefitAssessment: React.FC = () => {
     setChanges(convertedChanges);
   }, [storeChanges]);
 
-  const calculatePriorities = () => {
+  const calculatePriorities = (showToast: boolean = false) => {
     if (changes.length === 0) {
       setSortedChanges([]);
       setHasCalculated(false);
+      if (showToast) {
+        toast.error('No changes available to calculate');
+      }
       return;
     }
 
     if (Object.keys(benefitConfigs).length === 0) {
+      if (showToast) {
+        toast.error('Benefit scoring configuration not loaded');
+      }
       return;
     }
 
@@ -169,10 +180,13 @@ export const BenefitAssessment: React.FC = () => {
 
     setSortedChanges(ranked);
     setHasCalculated(true);
+    if (showToast) {
+      toast.success(`Benefit scores calculated for ${ranked.length} change${ranked.length !== 1 ? 's' : ''}!`);
+    }
   };
 
   useEffect(() => {
-    calculatePriorities();
+    calculatePriorities(false); // Auto-calculate on load without toast
   }, [changes, weights, benefitConfigs]);
 
   const handleWeightChange = (weight: keyof PriorityWeights, value: number) => {
@@ -358,7 +372,7 @@ export const BenefitAssessment: React.FC = () => {
             {showWeightConfig ? 'Hide' : 'Configure'} Weights
           </button>
           <button
-            onClick={calculatePriorities}
+            onClick={() => calculatePriorities(true)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
           >
             <BarChart3 className="w-4 h-4" />

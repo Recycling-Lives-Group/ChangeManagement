@@ -82,8 +82,14 @@ export default function AdminDashboard() {
         return false;
       });
 
-  // Calculate benefit score using prioritization factors
+  // Calculate benefit score - use stored score if available, otherwise use fallback calculation
   const calculateBenefitScore = (change: any) => {
+    // Use stored benefit score if available
+    if (change.benefitScore !== undefined && change.benefitScore !== null) {
+      return change.benefitScore;
+    }
+
+    // Fallback calculation if no stored score
     const wizardData = change.wizardData || {};
 
     const factors = {
@@ -127,13 +133,14 @@ export default function AdminDashboard() {
     return Math.round((totalScore / totalWeight) * 10); // Scale to 0-100
   };
 
-  // Calculate effort score using risk and impact factors
+  // Calculate effort score - use stored score if available, otherwise use fallback calculation
   const calculateEffortScore = (change: any) => {
     // Use stored effort score if available
     if (change.effortScore !== undefined && change.effortScore !== null) {
       return change.effortScore;
     }
 
+    // Fallback calculation if no stored score
     const wizardData = change.wizardData || {};
 
     const factors = {

@@ -78,6 +78,7 @@ export const ChangeCalendar: React.FC = () => {
   const { user } = useAuthStore();
   const [view, setView] = useState<View>('month');
   const [date, setDate] = useState(new Date());
+
   const [selectedEvent, setSelectedEvent] = useState<ChangeEvent | null>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -86,10 +87,10 @@ export const ChangeCalendar: React.FC = () => {
   const [editDuration, setEditDuration] = useState('2');
 
   const [filters, setFilters] = useState({
-    critical: true,
-    high: true,
-    medium: true,
-    low: true,
+    'Must Do': true,
+    'Strategic': true,
+    'Quick Fixes': true,
+    'Reconsider': true,
   });
 
   const isCAB = user?.role === 'admin' || user?.role === 'Admin' || user?.role === 'CAB_Member' ||
@@ -99,12 +100,51 @@ export const ChangeCalendar: React.FC = () => {
     fetchChanges();
   }, [fetchChanges]);
 
-  // Convert change requests to calendar events
+  // Helper function to get Eisenhower quadrant from change
+  const getEisenhowerQuadrant = (change: any): string => {
+    const benefitScore = change.benefitScore || 0;
+    const effortScore = change.effortScore || 0;
+
+    if (benefitScore >= 50 && effortScore < 50) {
+      return 'Must Do'; // High Benefit, Low Effort
+    } else if (benefitScore >= 50 && effortScore >= 50) {
+      return 'Strategic'; // High Benefit, High Effort
+    } else if (benefitScore < 50 && effortScore >= 50) {
+      return 'Reconsider'; // Low Benefit, High Effort
+    } else {
+      return 'Quick Fixes'; // Low Benefit, Low Effort
+    }
+  };
+
+  // Changes ready for scheduling (approved but no schedule)
+  const changesReadyForScheduling = changes
+    .filter(change => {
+      return change.status === 'approved' && !change.scheduledStart;
+    })
+    .map(change => {
+      const wizardData = change.wizardData || {};
+      const estimatedHours = Number(wizardData.estimatedEffortHours) || 2;
+      const eisenhowerQuadrant = getEisenhowerQuadrant(change);
+
+      return {
+        id: change.id,
+        title: change.title || 'Untitled Change',
+        requestNumber: change.requestNumber || '',
+        status: change.status,
+        priority: eisenhowerQuadrant,
+        requester: change.requester?.name || 'Unknown',
+        estimatedHours,
+        proposedDate: wizardData.proposedDate,
+      };
+    });
+
+  // Convert change requests to calendar events (only those with schedules)
   const calendarEvents: ChangeEvent[] = changes
     .filter(change => {
-      // Only show approved or scheduled changes
-      return change.status === 'approved' || change.status === 'scheduled' ||
-             change.status === 'in_progress' || change.status === 'implementing';
+      // Only show scheduled changes with actual schedule dates
+      return (change.status === 'approved' || change.status === 'scheduled' ||
+             change.status === 'in_progress' || change.status === 'implementing') &&
+             (change.scheduledStart || change.wizardData?.proposedDate);
     })
     .map(change => {
       // Use scheduledStart if available, otherwise use proposedDate from wizardData
@@ -123,6 +163,9 @@ export const ChangeCalendar: React.FC = () => {
         ? new Date(change.scheduledEnd)
         : calculateWorkEndTime(startDate, estimatedHours);
 
+      // Get Eisenhower quadrant based on benefit/effort scores
+      const eisenhowerQuadrant = getEisenhowerQuadrant(change);
+
       return {
         id: change.id,
         title: change.title || 'Untitled Change',
@@ -130,7 +173,7 @@ export const ChangeCalendar: React.FC = () => {
         end: endDate,
         requestNumber: change.requestNumber || '',
         status: change.status,
-        priority: change.priority,
+        priority: eisenhowerQuadrant,
         requester: change.requester?.name || 'Unknown',
         estimatedHours,
       };
@@ -143,10 +186,10 @@ export const ChangeCalendar: React.FC = () => {
 
   const eventStyleGetter = (event: ChangeEvent) => {
     const priorityColors = {
-      critical: { backgroundColor: '#ef4444', borderColor: '#dc2626' },
-      high: { backgroundColor: '#f59e0b', borderColor: '#d97706' },
-      medium: { backgroundColor: '#3b82f6', borderColor: '#2563eb' },
-      low: { backgroundColor: '#10b981', borderColor: '#059669' },
+      'Must Do': { backgroundColor: '#10b981', borderColor: '#059669' }, // Green
+      'Strategic': { backgroundColor: '#3b82f6', borderColor: '#2563eb' }, // Blue
+      'Quick Fixes': { backgroundColor: '#f59e0b', borderColor: '#d97706' }, // Yellow/Orange
+      'Reconsider': { backgroundColor: '#ef4444', borderColor: '#dc2626' }, // Red
     };
 
     const colors = priorityColors[event.priority as keyof typeof priorityColors] || {
@@ -242,16 +285,16 @@ export const ChangeCalendar: React.FC = () => {
 
   const getPriorityBadge = (priority: string) => {
     const colors = {
-      critical: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      high: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-      medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      low: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      'Must Do': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      'Strategic': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      'Quick Fixes': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'Reconsider': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     };
 
     return (
       <span
-        className={`px-2 py-1 rounded-full text-xs font-semibold uppercase ${
-          colors[priority as keyof typeof colors]
+        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+          colors[priority as keyof typeof colors] || 'bg-gray-100 text-gray-800'
         }`}
       >
         {priority}
@@ -261,6 +304,23 @@ export const ChangeCalendar: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      <style>{`
+        /* Hide weekend columns in calendar views */
+        .rbc-time-header-content > .rbc-row:first-child > .rbc-header:first-child,
+        .rbc-time-header-content > .rbc-row:first-child > .rbc-header:last-child,
+        .rbc-time-content > .rbc-time-column:first-child,
+        .rbc-time-content > .rbc-time-column:last-child,
+        .rbc-month-view .rbc-header:first-child,
+        .rbc-month-view .rbc-header:last-child {
+          display: none !important;
+        }
+
+        /* Adjust column widths after hiding weekends */
+        .rbc-time-header-content,
+        .rbc-time-content {
+          grid-template-columns: auto repeat(5, 1fr) !important;
+        }
+      `}</style>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -283,52 +343,52 @@ export const ChangeCalendar: React.FC = () => {
       {showFilters && (
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-            Filter by Priority
+            Filter by Eisenhower Matrix
           </h3>
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap">
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={filters.critical}
-                onChange={() => toggleFilter('critical')}
-                className="w-4 h-4 text-red-600 rounded"
+                checked={filters['Must Do']}
+                onChange={() => toggleFilter('Must Do')}
+                className="w-4 h-4 text-green-600 rounded"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                Critical
+                Must Do
               </span>
-              <div className="w-4 h-4 bg-red-500 rounded"></div>
+              <div className="w-4 h-4 bg-green-500 rounded"></div>
             </label>
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={filters.high}
-                onChange={() => toggleFilter('high')}
-                className="w-4 h-4 text-orange-600 rounded"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">High</span>
-              <div className="w-4 h-4 bg-orange-500 rounded"></div>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={filters.medium}
-                onChange={() => toggleFilter('medium')}
+                checked={filters['Strategic']}
+                onChange={() => toggleFilter('Strategic')}
                 className="w-4 h-4 text-blue-600 rounded"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Medium</span>
+              <span className="text-sm text-gray-700 dark:text-gray-300">Strategic</span>
               <div className="w-4 h-4 bg-blue-500 rounded"></div>
             </label>
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={filters.low}
-                onChange={() => toggleFilter('low')}
-                className="w-4 h-4 text-green-600 rounded"
+                checked={filters['Quick Fixes']}
+                onChange={() => toggleFilter('Quick Fixes')}
+                className="w-4 h-4 text-orange-600 rounded"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">Quick Fixes</span>
+              <div className="w-4 h-4 bg-orange-500 rounded"></div>
+            </label>
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters['Reconsider']}
+                onChange={() => toggleFilter('Reconsider')}
+                className="w-4 h-4 text-red-600 rounded"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                Low
+                Reconsider
               </span>
-              <div className="w-4 h-4 bg-green-500 rounded"></div>
+              <div className="w-4 h-4 bg-red-500 rounded"></div>
             </label>
           </div>
         </div>
@@ -356,7 +416,11 @@ export const ChangeCalendar: React.FC = () => {
                 onSelectEvent={handleSelectEvent}
                 eventPropGetter={eventStyleGetter}
                 style={{ height: '100%' }}
-                views={['month', 'week', 'day', 'agenda']}
+                views={['month']}
+                formats={{
+                  dayFormat: (date, culture, localizer) =>
+                    localizer?.format(date, 'ddd DD/MM', culture) || '',
+                }}
               />
             </div>
           )}
@@ -364,12 +428,11 @@ export const ChangeCalendar: React.FC = () => {
 
         {/* Event Details Sidebar */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            {selectedEvent ? 'Change Details' : 'Upcoming Changes'}
-          </h3>
-
           {selectedEvent ? (
             <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Change Details
+              </h3>
               {!isEditing ? (
                 <>
                   <div>
@@ -551,38 +614,111 @@ export const ChangeCalendar: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredEvents
-                .filter((event) => moment(event.start).isAfter(moment()))
-                .sort((a, b) => moment(a.start).diff(moment(b.start)))
-                .slice(0, 5)
-                .map((event) => (
-                  <div
-                    key={event.id}
-                    onClick={() => setSelectedEvent(event)}
-                    className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                          {event.title}
-                        </p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                          {moment(event.start).format('MMM D, h:mm A')}
-                        </p>
-                      </div>
-                      {getStatusIcon(event.status)}
-                    </div>
-                    <div className="mt-2">{getPriorityBadge(event.priority)}</div>
+            <>
+              {/* Changes Ready for Scheduling */}
+              {changesReadyForScheduling.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                    Changes Ready for Scheduling
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                    Approved changes without a schedule - click to schedule
+                  </p>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {changesReadyForScheduling.map((change) => {
+                      // Create a temporary event object for scheduling
+                      const tempEvent: ChangeEvent = {
+                        id: change.id,
+                        title: change.title,
+                        start: change.proposedDate ? new Date(change.proposedDate) : new Date(),
+                        end: change.proposedDate ? calculateWorkEndTime(new Date(change.proposedDate), change.estimatedHours) : new Date(),
+                        requestNumber: change.requestNumber,
+                        status: change.status,
+                        priority: change.priority,
+                        requester: change.requester,
+                        estimatedHours: change.estimatedHours,
+                      };
+
+                      return (
+                        <div
+                          key={change.id}
+                          onClick={() => {
+                            setSelectedEvent(tempEvent);
+                            setIsEditing(true);
+                            // Pre-fill form with proposed date or today
+                            const startDate = change.proposedDate ? new Date(change.proposedDate) : new Date();
+                            setEditStartDate(moment(startDate).format('YYYY-MM-DD'));
+                            setEditStartTime(moment(startDate).format('HH:mm'));
+                            setEditDuration(change.estimatedHours.toString());
+                          }}
+                          className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 transition cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                                {change.title}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                {change.requestNumber}
+                              </p>
+                            </div>
+                            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                          </div>
+                          <div className="mt-2 flex items-center gap-2">
+                            {getPriorityBadge(change.priority)}
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
+                              {change.estimatedHours}h estimated
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              {filteredEvents.filter((event) => moment(event.start).isAfter(moment())).length === 0 && (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No upcoming scheduled changes</p>
                 </div>
               )}
-            </div>
+
+              {/* Upcoming Changes */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                  Upcoming Changes
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Next 3 scheduled changes
+                </p>
+                <div className="space-y-2">
+                  {filteredEvents
+                    .filter((event) => moment(event.start).isAfter(moment()))
+                    .sort((a, b) => moment(a.start).diff(moment(b.start)))
+                    .slice(0, 3)
+                    .map((event) => (
+                      <div
+                        key={event.id}
+                        onClick={() => setSelectedEvent(event)}
+                        className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                              {event.title}
+                            </p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              {moment(event.start).format('MMM D, h:mm A')}
+                            </p>
+                          </div>
+                          {getStatusIcon(event.status)}
+                        </div>
+                        <div className="mt-2">{getPriorityBadge(event.priority)}</div>
+                      </div>
+                    ))}
+                  {filteredEvents.filter((event) => moment(event.start).isAfter(moment())).length === 0 && (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>No upcoming scheduled changes</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>

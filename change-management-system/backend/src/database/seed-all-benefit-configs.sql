@@ -38,10 +38,10 @@ VALUES
   (
     'processImprovement',
     'Process Improvement',
-    100.00,
-    'percentage',
+    1000.00,
+    'hours',
     2,
-    'Process efficiency improvement percentage. 100% efficiency gain = 100 points. Timeline: 2 points deducted per month delay.'
+    'Hours saved through process improvement. 1,000 hours saved = 100 points. Timeline: 2 points deducted per month delay.'
   ),
 
   -- Internal Quality of Life
